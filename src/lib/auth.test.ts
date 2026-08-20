@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AuthError,
+  buildUrl,
   getAuthenticatedClient,
   redactSecrets,
   REQUIRED_OAUTH_SCOPE,
@@ -161,6 +162,7 @@ describe("getAuthenticatedClient", () => {
     });
     expect(result.status).toBe(200);
     expect(result.data).toEqual({ ok: true });
+    expect(result.headers.get("content-type")).toMatch(/json/);
     expect(tokens).toBe(2);
     expect(calls).toHaveLength(2);
     expect(calls[0]?.auth).not.toBe(calls[1]?.auth);
@@ -189,5 +191,17 @@ describe("getAuthenticatedClient", () => {
       expect(String(error)).toMatch(/401/);
       return true;
     });
+  });
+});
+
+describe("buildUrl", () => {
+  it("encodes repeated query keys for arrays", () => {
+    const url = buildUrl("https://example.invalid", "/user", {
+      "filter[roles.rolename][]": ["roles.registered", "roles.admin"],
+      page: 1,
+    });
+    expect(url).toContain("filter%5Broles.rolename%5D%5B%5D=roles.registered");
+    expect(url).toContain("filter%5Broles.rolename%5D%5B%5D=roles.admin");
+    expect(url).toContain("page=1");
   });
 });

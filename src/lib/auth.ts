@@ -174,17 +174,22 @@ export class TokenManager {
   }
 }
 
+export type QueryPrimitive = string | number | boolean;
+export type QueryParams = Record<string, QueryPrimitive | QueryPrimitive[] | undefined>;
+
 export interface ApiRequestOptions {
   method: string;
   path: string;
-  query?: Record<string, string | number | boolean | undefined>;
+  query?: QueryParams;
   body?: unknown;
   headers?: Record<string, string>;
+  signal?: AbortSignal;
 }
 
 export interface ApiResponse<T = unknown> {
   status: number;
   data: T;
+  headers: Headers;
 }
 
 export interface AuthenticatedClient {
@@ -193,10 +198,10 @@ export interface AuthenticatedClient {
   request<T = unknown>(options: ApiRequestOptions): Promise<ApiResponse<T>>;
 }
 
-function buildUrl(
+export function buildUrl(
   baseUrl: string,
   path: string,
-  query?: ApiRequestOptions["query"],
+  query?: QueryParams,
 ): string {
   const url = new URL(path.startsWith("http") ? path : `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`);
   if (query) {
@@ -204,7 +209,13 @@ function buildUrl(
       if (value === undefined) {
         continue;
       }
-      url.searchParams.set(key, String(value));
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          url.searchParams.append(key, String(item));
+        }
+      } else {
+        url.searchParams.set(key, String(value));
+      }
     }
   }
   return url.toString();
@@ -230,6 +241,9 @@ export function getAuthenticatedClient(
     };
 
     const init: RequestInit = { method: options.method, headers };
+    if (options.signal) {
+      init.signal = options.signal;
+    }
     if (options.body !== undefined) {
       headers["Content-Type"] = headers["Content-Type"] ?? "application/json";
       init.body = typeof options.body === "string" ? options.body : JSON.stringify(options.body);
@@ -239,6 +253,9 @@ export function getAuthenticatedClient(
     try {
       response = await fetchImpl(buildUrl(config.baseUrl, options.path, options.query), init);
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw error;
+      }
       const message = error instanceof Error ? error.message : String(error);
       throw new AuthError(
         redactSecrets(`API request failed: ${message}`, secretsFrom(config, [token])),
@@ -269,7 +286,7 @@ export function getAuthenticatedClient(
       );
     }
 
-    return { status: response.status, data };
+    return { status: response.status, data, headers: response.headers };
   }
 
   return { config, tokenManager, request };

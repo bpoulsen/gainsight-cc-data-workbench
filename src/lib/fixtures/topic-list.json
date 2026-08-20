@@ -1,0 +1,16 @@
+{
+  "result": [
+    {
+      "id": "101",
+      "publicId": "5",
+      "contentType": "question",
+      "title": "How do I export users?"
+    },
+    {
+      "id": "102",
+      "publicId": "6",
+      "contentType": "conversation",
+      "title": "Welcome thread"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "users": [
+    {
+      "userid": 7,
+      "email": "ops@example.com",
+      "username": "ops"
+    }
+  ],
+  "statistics": {
+    "count": 1
+  }
+}

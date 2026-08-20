@@ -114,6 +114,8 @@ Official API docs: [https://api2-eu-west-1.insided.com/docs/community/](https://
 src/index.ts                 CLI entry
 src/cli.ts                   Flag parsing and dispatch
 src/lib/config/              Named sandbox/prod profiles
+src/lib/apiClient.ts         Typed HTTP client, pagination, family APIs
+src/generated/               OpenAPI types (pnpm generate:api)
 src/adapters/                Resource adapters (later tasks)
 src/commands/                explore | export | bulk (later tasks)
 src/wizard/                  Interactive menus (later tasks)
@@ -129,8 +131,11 @@ Requires Node.js 20+ and pnpm.
 pnpm install
 pnpm gs --help
 pnpm test
+pnpm generate:api   # regenerate src/generated from docs/api/*.json
 ```
 
 Copy `.env.sandbox.example` to `.env.sandbox` and fill in OAuth client credentials from Gainsight CC admin. Optionally copy `.env.prod.example` to `.env.prod`.
 
-Stack: TypeScript (NodeNext, strict), `@clack/prompts`, dotenv, Vitest. API client, CSV runner, and wizard land in later tasks.
+Stack: TypeScript (NodeNext, strict), `@clack/prompts`, dotenv, Vitest. CSV runner and wizard land in later tasks.
+
+Debug API calls with `GS_DEBUG=1` or `DEBUG=gainsight` (tokens and client secrets are redacted).
