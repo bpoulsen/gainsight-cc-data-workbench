@@ -49,8 +49,9 @@ export async function promptLine(question: string): Promise<string> {
 }
 
 /**
+ * Prompt for typed confirmation on trash / erase / permanent delete.
  * Returns true when the operator confirmed (or confirmation is skipped).
- * Dry-run and --skip-confirmation never prompt.
+ * Dry-run and `--skip-confirmation` never prompt.
  */
 export async function confirmDestructiveOperation(
   options: ConfirmDestructiveOptions,

@@ -155,6 +155,11 @@ function notFound(email: string, cause?: unknown): IdentityError {
   });
 }
 
+/**
+ * Resolves Gainsight userids from CSV `id` / `userid` / `email`.
+ * Email lookups hit `GET /user/email/{email}` and are cached per job.
+ * If both id and email are present and they disagree, the row fails.
+ */
 export class UserIdentityResolver {
   private readonly api: ReturnType<typeof usersApi>;
   private readonly cache = new Map<string, number>();
@@ -171,6 +176,7 @@ export class UserIdentityResolver {
     this.api = usersApi(client);
   }
 
+  /** Return the numeric userid for one row. Throws {@link IdentityError} on missing/conflict/404. */
   async resolveUserId(row: UserIdentityRow): Promise<number> {
     try {
       const id = await this.resolve(row);
@@ -182,6 +188,7 @@ export class UserIdentityResolver {
     }
   }
 
+  /** Look up distinct emails in parallel so the job does not wait per row. */
   async prefetch(rows: Iterable<UserIdentityRow>): Promise<void> {
     const emails = new Set<string>();
     for (const row of rows) {

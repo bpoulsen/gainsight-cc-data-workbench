@@ -51,6 +51,7 @@ Copy .env.sandbox.example to .env.sandbox and fill in OAuth client credentials.
 Trash / erase / permanent delete require typing the resource name or DELETE unless you pass --skip-confirmation.
 `;
 
+/** Parse argv into CLI flags. Does not load profiles or call the API. */
 export function parseCliFlags(argv: string[]): CliFlags {
   const { values } = parseArgs({
     args: argv,
@@ -99,6 +100,10 @@ function packageVersion(): string {
   return pkg.version;
 }
 
+/**
+ * CLI entry: parse flags, load the profile, authenticate, then wizard / export / bulk.
+ * Returns a process exit code (0 success, 1 failure).
+ */
 export async function main(
   argv: string[] = process.argv.slice(2),
   cwd: string = process.cwd(),

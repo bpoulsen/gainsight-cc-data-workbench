@@ -52,6 +52,7 @@ export interface CsvWriterOptions {
   progressEvery?: number;
 }
 
+/** Coerce a CSV cell: empty → undefined, booleans, numbers, pipe-separated lists, or JSON. */
 export function coerceCell(value: string, kind: FieldKind, field: string): unknown {
   if (value === "") {
     return undefined;

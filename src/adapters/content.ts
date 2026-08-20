@@ -169,6 +169,7 @@ const CONVERT_OP_TO_TARGET: Record<string, string> = {
   convertToQuestion: "question",
 };
 
+/** True when a 422 from GET /topics is the 10,000-result cap (not a generic validation error). */
 export function isTopicCapError(error: unknown): boolean {
   if (!(error instanceof ValidationError)) {
     return false;

@@ -9,8 +9,6 @@
  * (`editTitle` vs `editTags` vs `toggleTrashed`). Paths returned by
  * fromCsvRow() are family-relative (users/search/gamification under `/`,
  * community/events under `/v2` via the family client).
- *
- * Concrete adapters land in later tasks (users, questions, events, …).
  */
 import {
   communityApi,

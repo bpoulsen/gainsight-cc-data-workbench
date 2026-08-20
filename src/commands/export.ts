@@ -26,6 +26,11 @@ export interface ExportResult {
   hitCap: boolean;
 }
 
+/**
+ * Stream `adapter.list()` pages into a CSV.
+ * `filters` defaults to `{}` (unfiltered). The wizard supplies filters; scripted
+ * `--op export` currently does not.
+ */
 export async function exportResource(
   adapter: IResourceAdapter,
   options: ExportOptions,

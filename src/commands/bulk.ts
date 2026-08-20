@@ -29,6 +29,7 @@ export interface BulkCommandOptions {
   auditLogPath?: string;
 }
 
+/** Run one named bulk operation over a CSV (dry-run or live) and write a results file. */
 export async function runBulkJob(options: BulkCommandOptions): Promise<BulkJobSummary> {
   const runner = new BulkJobRunner();
   const job: Parameters<BulkJobRunner["run"]>[0] = {
