@@ -11,6 +11,12 @@ importers:
       '@clack/prompts':
         specifier: ^0.11.0
         version: 0.11.0
+      csv-parse:
+        specifier: ^7.0.2
+        version: 7.0.2
+      csv-stringify:
+        specifier: ^6.8.3
+        version: 6.8.3
       dotenv:
         specifier: ^16.6.1
         version: 16.6.1
@@ -429,6 +435,12 @@ packages:
 
   colorette@1.4.0:
     resolution: {integrity: sha512-Y2oEozpomLn7Q3HFP7dpww7AtMJplbM9lGZP6RDfHqmbeRjiwRg4n6VM6j4KLmRke85uWEI7JqF17f3pqdRA0g==}
+
+  csv-parse@7.0.2:
+    resolution: {integrity: sha512-uKZghv9UmPkMVLYy//KZ9HFAIJsl7wkhoEdIL0+rhuSY9pZQlhaeGEDPIe+/w7eh81MOql8Q/9+inAGWG6ZHYA==}
+
+  csv-stringify@6.8.3:
+    resolution: {integrity: sha512-gIeSCvq5F4VtXV3naV3VAewLhBkiZBz+PPhTOA8H3Y8h/ELa+R1ml0GZck/4/Nzo9ep2lvOluilJ6MJlbZsKMA==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -1007,6 +1019,10 @@ snapshots:
   check-error@2.1.3: {}
 
   colorette@1.4.0: {}
+
+  csv-parse@7.0.2: {}
+
+  csv-stringify@6.8.3: {}
 
   debug@4.4.3(supports-color@10.2.2):
     dependencies:

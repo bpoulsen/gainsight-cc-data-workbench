@@ -28,6 +28,7 @@ Options:
       --dry-run                 Plan writes without calling the API
       --fail-fast               Stop a bulk job on the first row failure
       --concurrency <n>         Max parallel API requests (default 3, max 20)
+      --utf8-bom                Prefix export CSV with a UTF-8 BOM (Excel)
       --auth-check              Acquire an OAuth token and report expiry (token is not printed)
   -h, --help                    Show this help
   -v, --version                 Show version
@@ -48,6 +49,7 @@ export function parseCliFlags(argv: string[]): CliFlags {
       "dry-run": { type: "boolean", default: false },
       "fail-fast": { type: "boolean", default: false },
       concurrency: { type: "string" },
+      "utf8-bom": { type: "boolean", default: false },
       "auth-check": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
       version: { type: "boolean", short: "v", default: false },
@@ -69,6 +71,7 @@ export function parseCliFlags(argv: string[]): CliFlags {
     help: values.help === true,
     version: values.version === true,
     concurrency: parseConcurrency(values.concurrency),
+    utf8Bom: values["utf8-bom"] === true,
   };
 }
 

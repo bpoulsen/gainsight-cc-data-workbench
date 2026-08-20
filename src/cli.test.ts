@@ -40,6 +40,11 @@ describe("parseCliFlags", () => {
   it("rejects invalid --concurrency", () => {
     expect(() => parseCliFlags(["--concurrency", "0"])).toThrow(/1 to 20/);
   });
+
+  it("parses --utf8-bom", () => {
+    expect(parseCliFlags([]).utf8Bom).toBe(false);
+    expect(parseCliFlags(["--utf8-bom"]).utf8Bom).toBe(true);
+  });
 });
 
 describe("isWriteOperation", () => {

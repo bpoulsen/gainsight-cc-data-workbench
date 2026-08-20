@@ -81,9 +81,12 @@ If a user row has both `id` and `email` and they resolve to different people, th
 - UTF-8, header row required
 - Booleans: `true` / `false`
 - Multi-value fields (tags, roles, product areas): pipe-separated (`tag-a|tag-b`)
+- Nested objects (and arrays of objects) on export: JSON.stringify
+- Exports always include `id`; user exports also include `email`
 - Empty cell = omit the field
 - Unknown columns: warn and ignore
 - **One named operation per job** (e.g. all rows are `editTags`). Multi-action rows are a later follow-up.
+- `--utf8-bom` prefixes export files with a UTF-8 BOM for Excel
 
 Every write job writes a results CSV (`{input}.results.csv` unless you pass `--results`) with `status`, `http_status`, `error`, `resolved_id`, `operation`, `profile`, and `timestamp`.
 
@@ -116,6 +119,7 @@ src/cli.ts                   Flag parsing and dispatch
 src/lib/config/              Named sandbox/prod profiles
 src/lib/apiClient.ts         Typed HTTP client, pagination, family APIs
 src/lib/retry.ts             429/5xx backoff, delete-no-retry, concurrency limiter
+src/lib/csv.ts               Streaming CSV reader/writer, column mapping, flatten
 src/generated/               OpenAPI types (pnpm generate:api)
 src/adapters/                Resource adapters (later tasks)
 src/commands/                explore | export | bulk (later tasks)
