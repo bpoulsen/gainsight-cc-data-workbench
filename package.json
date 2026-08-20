@@ -1,0 +1,33 @@
+{
+  "name": "gainsight-workbench",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Terminal workbench for exploring and bulk-editing Gainsight Customer Communities via API",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "gainsight-workbench": "./dist/index.js",
+    "gs": "./dist/index.js"
+  },
+  "scripts": {
+    "gs": "tsx src/index.ts",
+    "gainsight-workbench": "tsx src/index.ts",
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "dotenv": "^16.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

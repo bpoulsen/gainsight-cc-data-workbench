@@ -4,7 +4,7 @@ Terminal workbench for [Gainsight Customer Communities](https://www.gainsight.co
 
 There is no web GUI in v1. Everything runs from the terminal via a wizard (and later, equivalent non-interactive flags).
 
-**Status:** Specced, not implemented yet. Requirements live in [`docs/prd/prd.md`](docs/prd/prd.md). API specs are in [`docs/api/`](docs/api/).
+**Status:** CLI skeleton in progress. Requirements live in [`docs/prd/prd.md`](docs/prd/prd.md). API specs are in [`docs/api/`](docs/api/).
 
 ## Why this exists
 
@@ -43,11 +43,18 @@ pnpm gs --profile sandbox --resource users --op export --out users.csv
 pnpm gs --profile prod --resource questions --op editTags --csv tags.csv --dry-run
 ```
 
-Exact command names will land with the TypeScript CLI (Node 20+). Until then, use the Postman collection in `docs/api/` to call the API directly.
+Use the Postman collection in `docs/api/` if you need to call the API before a given command is implemented.
 
 ## Authentication and profiles
 
-Auth is OAuth2 **client credentials**. Tokens last ~2 hours; the CLI will refresh them. A token **without** `scope=read write` will 401 on `/v2`.
+Auth is OAuth2 **client credentials**. Tokens last ~2 hours; the CLI caches them in memory and refreshes 60s before expiry. A token **without** `scope=read write` will 401 on `/v2`.
+
+```bash
+pnpm gs --auth-check --profile sandbox
+pnpm gs --auth-check --profile prod
+```
+
+`--auth-check` reports token lifetime only. It never prints the access token or client secret.
 
 Named profiles **prod** and **sandbox** share the same API host; only credentials differ.
 
@@ -104,20 +111,26 @@ Official API docs: [https://api2-eu-west-1.insided.com/docs/community/](https://
 ## Repository layout
 
 ```
+src/index.ts                 CLI entry
+src/cli.ts                   Flag parsing and dispatch
+src/lib/config/              Named sandbox/prod profiles
+src/adapters/                Resource adapters (later tasks)
+src/commands/                explore | export | bulk (later tasks)
+src/wizard/                  Interactive menus (later tasks)
 docs/prd/prd.md              Product requirements
 docs/api/                    OpenAPI specs + Postman collection
-docs/api/openapi.yaml        Auth overview
-docs/resources/webhooks.md   Webhook events (not v1)
 ```
 
 ## Development
 
-Not scaffolded yet. Planned stack from the PRD:
+Requires Node.js 20+ and pnpm.
 
-- Node.js 20+ and TypeScript
-- Client generated or wrapped from `docs/api/*.json`
-- Interactive wizard (`@clack/prompts` or equivalent)
-- Streaming CSV I/O
-- Vitest for identity resolution, CSV mapping, dry-run, and delete no-retry
+```bash
+pnpm install
+pnpm gs --help
+pnpm test
+```
 
-Delivery is phased (P0–P7 in the PRD). P1–P4 are the Workbench polyfill; P5–P7 finish remaining actions (moderation, events, taxonomy writes, gamification).
+Copy `.env.sandbox.example` to `.env.sandbox` and fill in OAuth client credentials from Gainsight CC admin. Optionally copy `.env.prod.example` to `.env.prod`.
+
+Stack: TypeScript (NodeNext, strict), `@clack/prompts`, dotenv, Vitest. API client, CSV runner, and wizard land in later tasks.
