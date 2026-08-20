@@ -14,6 +14,8 @@ import { isWriteOperation, type CliFlags } from "./lib/types.js";
 import { getAdapter } from "./adapters/index.js";
 import { AdapterError } from "./adapters/base.js";
 import { exportResource, TOPIC_CAP_HINT } from "./commands/export.js";
+import { formatJobSummary, runBulkJob } from "./commands/bulk.js";
+import { redactSecrets } from "./lib/auth.js";
 
 const HELP = `Gainsight CC Workbench — terminal explorer and CSV bulk tool
 
@@ -152,8 +154,63 @@ export async function main(
       return 0;
     }
 
-    io.log("Explore/bulk commands land in later tasks. Export is available for implemented adapters:");
+    if (flags.op === "explore") {
+      io.log("Explore (paged terminal preview) lands in the wizard task.");
+      return 0;
+    }
+
+    if (flags.op) {
+      if (!flags.resource) {
+        io.error("--resource is required for bulk jobs");
+        return 1;
+      }
+      if (!flags.csv) {
+        io.error("--csv is required for bulk jobs");
+        return 1;
+      }
+      const adapter = getAdapter(flags.resource, api);
+      const unknown = new Set<string>();
+      const secrets = [config.clientId, config.clientSecret];
+      io.log(
+        `${flags.dryRun ? "Dry-run" : "Running"} ${adapter.name}/${flags.op} from ${flags.csv}`,
+      );
+      const summary = await runBulkJob({
+        csvPath: flags.csv,
+        operation: flags.op,
+        adapter,
+        client: api,
+        profile: config.profile,
+        dryRun: flags.dryRun,
+        failFast: flags.failFast,
+        concurrency: flags.concurrency,
+        ...(flags.results !== undefined ? { resultsPath: flags.results } : {}),
+        ...(flags.utf8Bom === true ? { utf8Bom: true } : {}),
+        onProgress: (progress) => {
+          io.log(
+            `  ${progress.processed}/${progress.total} (ok ${progress.success}, fail ${progress.failed}, skip ${progress.skipped}, planned ${progress.planned})`,
+          );
+        },
+        onPlan: (plan, line) => {
+          if (!flags.dryRun) {
+            return;
+          }
+          const body = plan.body !== undefined ? ` ${JSON.stringify(plan.body)}` : "";
+          io.log(`  line ${line} ${redactSecrets(`${plan.method} ${plan.path}${body}`, secrets)}`);
+        },
+        onUnknownColumn: (header) => unknown.add(header),
+      });
+      if (unknown.size > 0) {
+        io.log(`Ignoring unknown CSV columns: ${[...unknown].join(", ")}`);
+      }
+      io.log(formatJobSummary(summary));
+      return summary.failed > 0 ? 1 : 0;
+    }
+
+    io.log("Explore lands later. Export and bulk are available for implemented adapters:");
     io.log("  pnpm gs --profile sandbox --resource users --op export --out exports/users.csv");
+    io.log(
+      "  pnpm gs --profile sandbox --resource users --op updateField --csv users.csv --dry-run",
+    );
     return 0;
   } catch (error) {
     const message =

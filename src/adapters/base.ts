@@ -21,8 +21,9 @@ import {
   type ApiClient,
   type ApiFamily,
   type FamilyApi,
+  type RequestExtras,
 } from "../lib/apiClient.js";
-import type { QueryParams } from "../lib/auth.js";
+import type { ApiRequestOptions, ApiResponse, QueryParams } from "../lib/auth.js";
 import { DEFAULT_PAGE_SIZE, extractPageItems } from "../lib/api/pagination.js";
 import {
   ensureExportColumns,
@@ -160,6 +161,7 @@ export interface IResourceAdapter {
     operation: string,
     context?: FromCsvRowContext,
   ): ApiCallPlan;
+  executePlan(plan: ApiCallPlan, extras?: RequestExtras): Promise<ApiResponse>;
   describeFilters(): FilterPrompt[];
 }
 
@@ -202,6 +204,34 @@ export abstract class BaseAdapter implements IResourceAdapter {
     context?: FromCsvRowContext,
   ): ApiCallPlan;
   abstract describeFilters(): FilterPrompt[];
+
+  async executePlan(plan: ApiCallPlan, extras: RequestExtras = {}): Promise<ApiResponse> {
+    const req: ApiRequestOptions = {
+      method: plan.method,
+      path: plan.path,
+      operation: plan.operation,
+      retryable: plan.retryable,
+    };
+    if (plan.query !== undefined) {
+      req.query = plan.query;
+    }
+    if (plan.body !== undefined) {
+      req.body = plan.body;
+    }
+    if (extras.headers !== undefined) {
+      req.headers = extras.headers;
+    }
+    if (extras.signal !== undefined) {
+      req.signal = extras.signal;
+    }
+    if (extras.operation !== undefined) {
+      req.operation = extras.operation;
+    }
+    if (extras.retryable !== undefined) {
+      req.retryable = extras.retryable;
+    }
+    return this.familyClient().request(req);
+  }
 
   familyClient(): FamilyApi {
     switch (this.family) {
