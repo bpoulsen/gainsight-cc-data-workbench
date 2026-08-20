@@ -1,0 +1,13 @@
+{
+  "userid": 7,
+  "email": "ops@example.com",
+  "username": "ops",
+  "joindate": 1710000000,
+  "lastactivity": 1720000000,
+  "rank": "Member",
+  "roles": ["roles.registered"],
+  "badges": ["helper"],
+  "profileFields": [
+    { "name": "Department", "NormalizedValue": "Ops" }
+  ]
+}
