@@ -4,6 +4,7 @@ import { DEFAULT_PAGE_SIZE } from "../lib/api/pagination.js";
 import type { QueryParams } from "../lib/auth.js";
 import { CsvWriter } from "../lib/csv.js";
 import type { IResourceAdapter } from "../adapters/base.js";
+import { TOPIC_CAP_HINT } from "../adapters/content.js";
 
 /** Page size for export pagination. User list has no documented max; 100 keeps request count down. */
 export const EXPORT_PAGE_SIZE = 100;
@@ -22,6 +23,7 @@ export interface ExportResult {
   pageCount: number;
   outPath: string;
   columns: string[];
+  hitCap: boolean;
 }
 
 export async function exportResource(
@@ -37,6 +39,7 @@ export async function exportResource(
   });
 
   let page = 1;
+  let hitCap = false;
   try {
     while (true) {
       const request: { page: number; pageSize: number; signal?: AbortSignal } = {
@@ -51,6 +54,10 @@ export async function exportResource(
         await writer.writeRow(adapter.flattenRecord(record));
       }
       options.onProgress?.(writer.rowCount, page);
+      if (result.hitCap === true) {
+        hitCap = true;
+        break;
+      }
       if (result.exhausted) {
         break;
       }
@@ -65,7 +72,10 @@ export async function exportResource(
     pageCount: page,
     outPath: options.outPath,
     columns,
+    hitCap,
   };
 }
+
+export { TOPIC_CAP_HINT };
 
 export { DEFAULT_PAGE_SIZE };

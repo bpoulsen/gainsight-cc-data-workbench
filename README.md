@@ -122,8 +122,8 @@ src/lib/retry.ts             429/5xx backoff, delete-no-retry, concurrency limit
 src/lib/csv.ts               Streaming CSV reader/writer, column mapping, flatten
 src/lib/identityResolver.ts  User id/email resolution with per-job cache
 src/generated/               OpenAPI types (pnpm generate:api)
-src/adapters/                Resource adapter contract + registry (users implemented)
-src/commands/                export (users); explore/bulk later
+src/adapters/                Resource adapters (users + unified content)
+src/commands/                export (users, topics, content types); explore/bulk later
 src/wizard/                  Interactive menus (later tasks)
 docs/prd/prd.md              Product requirements
 docs/api/                    OpenAPI specs + Postman collection

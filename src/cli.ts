@@ -13,7 +13,7 @@ import { parseConcurrency } from "./lib/retry.js";
 import { isWriteOperation, type CliFlags } from "./lib/types.js";
 import { getAdapter } from "./adapters/index.js";
 import { AdapterError } from "./adapters/base.js";
-import { exportResource } from "./commands/export.js";
+import { exportResource, TOPIC_CAP_HINT } from "./commands/export.js";
 
 const HELP = `Gainsight CC Workbench — terminal explorer and CSV bulk tool
 
@@ -146,6 +146,9 @@ export async function main(
         },
       });
       io.log(`Wrote ${result.rowCount} rows (${result.pageCount} pages) to ${result.outPath}`);
+      if (result.hitCap) {
+        io.error(TOPIC_CAP_HINT);
+      }
       return 0;
     }
 

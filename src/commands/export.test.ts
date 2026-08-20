@@ -66,6 +66,7 @@ describe("exportResource", () => {
       });
       expect(result.rowCount).toBe(3);
       expect(result.pageCount).toBe(2);
+      expect(result.hitCap).toBe(false);
       expect(result.columns).toEqual(["id", "email", "username", "roles"]);
       expect(pages).toEqual([1, 2]);
       const csv = await readFile(outPath, "utf8");

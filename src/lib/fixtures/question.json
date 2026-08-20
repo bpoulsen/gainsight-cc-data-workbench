@@ -1,0 +1,21 @@
+{
+  "id": "101",
+  "publicId": "5",
+  "contentType": "question",
+  "title": "How do I export users?",
+  "content": "Need a CSV of community users.",
+  "categoryId": "6",
+  "categoryName": "Getting started",
+  "tags": ["export", "csv"],
+  "moderatorTags": ["urgent"],
+  "trashed": false,
+  "sticky": false,
+  "closed": false,
+  "status": "published",
+  "createdAt": "2024-01-15T12:00:00+00:00",
+  "lastActivityAt": "2024-02-01T09:30:00+00:00",
+  "author": {
+    "id": "7",
+    "username": "ops"
+  }
+}
