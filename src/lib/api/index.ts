@@ -29,3 +29,8 @@ export {
   isDeleteLike,
   toResultsFields,
 } from "../retry.js";
+export {
+  IdentityError,
+  UserIdentityResolver,
+  identityResultsFields,
+} from "../identityResolver.js";

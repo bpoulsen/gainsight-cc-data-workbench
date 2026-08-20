@@ -120,6 +120,7 @@ src/lib/config/              Named sandbox/prod profiles
 src/lib/apiClient.ts         Typed HTTP client, pagination, family APIs
 src/lib/retry.ts             429/5xx backoff, delete-no-retry, concurrency limiter
 src/lib/csv.ts               Streaming CSV reader/writer, column mapping, flatten
+src/lib/identityResolver.ts  User id/email resolution with per-job cache
 src/generated/               OpenAPI types (pnpm generate:api)
 src/adapters/                Resource adapters (later tasks)
 src/commands/                explore | export | bulk (later tasks)
