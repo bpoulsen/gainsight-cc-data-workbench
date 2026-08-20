@@ -11,6 +11,9 @@ import { AuthError, getAuthenticatedClient } from "./lib/auth.js";
 import { createApiClient } from "./lib/apiClient.js";
 import { parseConcurrency } from "./lib/retry.js";
 import { isWriteOperation, type CliFlags } from "./lib/types.js";
+import { getAdapter } from "./adapters/index.js";
+import { AdapterError } from "./adapters/base.js";
+import { exportResource } from "./commands/export.js";
 
 const HELP = `Gainsight CC Workbench — terminal explorer and CSV bulk tool
 
@@ -120,14 +123,40 @@ export async function main(
       : 0;
     io.log(`Authenticated. Token expires in ~${secondsLeft}s.`);
 
-    if (!flags.authCheck) {
-      io.log("Explore/export/bulk commands land in later tasks.");
+    if (flags.authCheck) {
+      return 0;
     }
+
+    if (flags.op === "export") {
+      if (!flags.resource) {
+        io.error("--resource is required for export");
+        return 1;
+      }
+      if (!flags.out) {
+        io.error("--out is required for export");
+        return 1;
+      }
+      const adapter = getAdapter(flags.resource, api);
+      io.log(`Exporting ${adapter.label} → ${flags.out}`);
+      const result = await exportResource(adapter, {
+        outPath: flags.out,
+        ...(flags.utf8Bom === true ? { utf8Bom: true } : {}),
+        onProgress: (rowCount, page) => {
+          io.log(`  ${rowCount} rows (page ${page})`);
+        },
+      });
+      io.log(`Wrote ${result.rowCount} rows (${result.pageCount} pages) to ${result.outPath}`);
+      return 0;
+    }
+
+    io.log("Explore/bulk commands land in later tasks. Export is available for implemented adapters:");
+    io.log("  pnpm gs --profile sandbox --resource users --op export --out exports/users.csv");
     return 0;
   } catch (error) {
     const message =
       error instanceof ProfileError ||
       error instanceof AuthError ||
+      error instanceof AdapterError ||
       error instanceof Error
         ? error.message
         : String(error);

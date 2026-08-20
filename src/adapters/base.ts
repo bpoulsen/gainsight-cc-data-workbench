@@ -152,6 +152,8 @@ export interface IResourceAdapter {
   list(filters: QueryParams, page: PageRequest): Promise<ListPage>;
   get(id: string | number, signal?: AbortSignal): Promise<NormalizedRecord>;
   exportFields(): ExportField[];
+  exportColumnNames(): string[];
+  flattenRecord(record: NormalizedRecord): Record<string, string>;
   operations(): ResourceOperation[];
   fromCsvRow(
     row: Record<string, unknown>,

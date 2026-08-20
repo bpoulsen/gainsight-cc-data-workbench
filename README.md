@@ -123,7 +123,7 @@ src/lib/csv.ts               Streaming CSV reader/writer, column mapping, flatte
 src/lib/identityResolver.ts  User id/email resolution with per-job cache
 src/generated/               OpenAPI types (pnpm generate:api)
 src/adapters/                Resource adapter contract + registry (users implemented)
-src/commands/                explore | export | bulk (later tasks)
+src/commands/                export (users); explore/bulk later
 src/wizard/                  Interactive menus (later tasks)
 docs/prd/prd.md              Product requirements
 docs/api/                    OpenAPI specs + Postman collection
