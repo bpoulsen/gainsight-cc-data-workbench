@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  availableProfiles,
   formatProdWriteBanner,
   loadProfile,
   loadResolvedProfile,
@@ -104,6 +105,14 @@ describe("loadProfile", () => {
       expect(error).toBeInstanceOf(ProfileError);
       expect(String(error)).not.toMatch(/secret/i);
     }
+  });
+});
+
+describe("availableProfiles", () => {
+  it("lists only profiles that have env files", () => {
+    const dir = tempWorkspace();
+    writeEnv(dir, "prod", {});
+    expect(availableProfiles(dir)).toEqual(["prod"]);
   });
 });
 

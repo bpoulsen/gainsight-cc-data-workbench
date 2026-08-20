@@ -8,10 +8,12 @@ import {
   CsvReader,
   CsvWriter,
   coerceCell,
+  countCsvRows,
   ensureExportColumns,
   flattenRecord,
   flattenValue,
   mapCsvRow,
+  peekCsvHeaders,
   UTF8_BOM,
 } from "./csv.js";
 
@@ -155,6 +157,8 @@ describe("CsvWriter", () => {
         { id: "1", email: "a@example.com", username: "a" },
         { id: "2", email: "b@example.com", username: "b" },
       ]);
+      expect(await peekCsvHeaders(path)).toEqual(["id", "email", "username"]);
+      expect(await countCsvRows(path)).toBe(2);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

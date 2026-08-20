@@ -31,7 +31,7 @@ This CLI wraps those APIs with the same operator loop: filter → preview → CS
 
 This is **not** the Salesforce → Gainsight migration ETL. It operates on Gainsight CC after (or alongside) that work.
 
-## Planned usage
+## Usage
 
 ```bash
 # Interactive wizard (default profile is sandbox when both exist)
@@ -123,8 +123,8 @@ src/lib/csv.ts               Streaming CSV reader/writer, column mapping, flatte
 src/lib/identityResolver.ts  User id/email resolution with per-job cache
 src/generated/               OpenAPI types (pnpm generate:api)
 src/adapters/                Resource adapters (users + unified content)
-src/commands/                export + bulk; explore/wizard later
-src/wizard/                  Interactive menus (later tasks)
+src/commands/                export, bulk, and interactive wizard
+src/wizard/                  Wizard helpers and @clack/prompts UI
 docs/prd/prd.md              Product requirements
 docs/api/                    OpenAPI specs + Postman collection
 ```
@@ -142,6 +142,6 @@ pnpm generate:api   # regenerate src/generated from docs/api/*.json
 
 Copy `.env.sandbox.example` to `.env.sandbox` and fill in OAuth client credentials from Gainsight CC admin. Optionally copy `.env.prod.example` to `.env.prod`.
 
-Stack: TypeScript (NodeNext, strict), `@clack/prompts`, dotenv, Vitest. CSV runner and wizard land in later tasks.
+Stack: TypeScript (NodeNext, strict), `@clack/prompts`, dotenv, Vitest.
 
 Debug API calls with `GS_DEBUG=1` or `DEBUG=gainsight` (tokens and client secrets are redacted).

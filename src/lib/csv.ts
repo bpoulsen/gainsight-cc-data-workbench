@@ -341,3 +341,20 @@ export class CsvWriter {
     }
   }
 }
+
+/** Read CSV headers without buffering the rest of the file. */
+export async function peekCsvHeaders(path: string): Promise<string[]> {
+  const reader = CsvReader.fromFile(path);
+  for await (const _row of reader) {
+    return reader.headers;
+  }
+  return reader.headers;
+}
+
+export async function countCsvRows(path: string): Promise<number> {
+  let count = 0;
+  for await (const _row of CsvReader.fromFile(path)) {
+    count += 1;
+  }
+  return count;
+}

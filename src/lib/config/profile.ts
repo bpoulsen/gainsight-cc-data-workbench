@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { parse } from "dotenv";
 import {
   isProfileName,
+  PROFILE_NAMES,
   type GainsightConfig,
   type ProfileName,
 } from "../types.js";
@@ -30,6 +31,10 @@ export function envFilePath(profile: ProfileName, cwd: string): string {
 
 export function profileFileExists(profile: ProfileName, cwd: string): boolean {
   return existsSync(envFilePath(profile, cwd));
+}
+
+export function availableProfiles(cwd: string): ProfileName[] {
+  return PROFILE_NAMES.filter((profile) => profileFileExists(profile, cwd));
 }
 
 export function resolveProfile(

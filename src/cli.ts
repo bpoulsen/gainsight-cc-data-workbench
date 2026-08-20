@@ -15,6 +15,7 @@ import { getAdapter } from "./adapters/index.js";
 import { AdapterError } from "./adapters/base.js";
 import { exportResource, TOPIC_CAP_HINT } from "./commands/export.js";
 import { formatJobSummary, runBulkJob } from "./commands/bulk.js";
+import { runWizard, shouldLaunchWizard, WizardCancelled } from "./commands/wizard.js";
 import { redactSecrets } from "./lib/auth.js";
 
 const HELP = `Gainsight CC Workbench — terminal explorer and CSV bulk tool
@@ -23,10 +24,12 @@ Usage:
   pnpm gs [options]
   pnpm gainsight-workbench [options]
 
+With no --resource / --op / --csv / --out, launches the interactive wizard.
+
 Options:
   -p, --profile <sandbox|prod>  Named community profile (default: sandbox if both exist)
       --resource <name>         Resource family (users, questions, ideas, ...)
-      --op <operation>          Named action (explore, export, editTags, ...)
+      --op <operation>          Named action (export, editTags, erase, ...)
       --csv <path>              Input CSV for bulk jobs
       --out <path>              Export CSV path
       --results <path>          Bulk results CSV path (default: {input}.results.csv)
@@ -108,6 +111,10 @@ export async function main(
       return 0;
     }
 
+    if (shouldLaunchWizard(flags)) {
+      return runWizard({ flags, cwd, io });
+    }
+
     const config = loadResolvedProfile(flags.profile, cwd);
     io.log(`Profile: ${config.profile}`);
     io.log(`API host: ${config.baseUrl}`);
@@ -155,8 +162,8 @@ export async function main(
     }
 
     if (flags.op === "explore") {
-      io.log("Explore (paged terminal preview) lands in the wizard task.");
-      return 0;
+      io.error("Explore is interactive. Run `pnpm gs` without --op to open the wizard, or use --op export.");
+      return 1;
     }
 
     if (flags.op) {
@@ -206,13 +213,12 @@ export async function main(
       return summary.failed > 0 ? 1 : 0;
     }
 
-    io.log("Explore lands later. Export and bulk are available for implemented adapters:");
-    io.log("  pnpm gs --profile sandbox --resource users --op export --out exports/users.csv");
-    io.log(
-      "  pnpm gs --profile sandbox --resource users --op updateField --csv users.csv --dry-run",
-    );
-    return 0;
+    io.error("Specify --resource and --op, or run without those flags to open the wizard.");
+    return 1;
   } catch (error) {
+    if (error instanceof WizardCancelled) {
+      return 0;
+    }
     const message =
       error instanceof ProfileError ||
       error instanceof AuthError ||
