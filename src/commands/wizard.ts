@@ -111,13 +111,16 @@ async function runWizardInner(options: RunWizardOptions, ui: WizardUi): Promise<
   });
   const adapter = resolveAdapter(resourceName, session.client);
 
+  const modeOptions: Array<{ value: WizardMode; label: string; hint: string }> = [
+    { value: "explore", label: "Explore", hint: "preview data in the terminal" },
+    { value: "export", label: "Export", hint: "save matching rows to CSV" },
+  ];
+  if (adapter.operations().length > 0) {
+    modeOptions.push({ value: "bulk", label: "Bulk", hint: "create / update / delete from CSV" });
+  }
   const mode = await ui.select<WizardMode>({
     message: "What do you want to do?",
-    options: [
-      { value: "explore", label: "Explore", hint: "preview data in the terminal" },
-      { value: "export", label: "Export", hint: "save matching rows to CSV" },
-      { value: "bulk", label: "Bulk", hint: "create / update / delete from CSV" },
-    ],
+    options: modeOptions,
   });
 
   if (mode === "explore") {

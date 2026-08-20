@@ -115,12 +115,12 @@ describe("resolveResourceName", () => {
 });
 
 describe("adapter registry", () => {
-  it("constructs a registered adapter and rejects unimplemented names", () => {
+  it("constructs a registered adapter and rejects unknown names", () => {
     registerAdapter("users", () => new FakeUsersAdapter(stubClient));
     const adapter = getAdapter("user", stubClient);
     expect(adapter.name).toBe("users");
     expect(registeredAdapters()).toContain("users");
-    expect(() => getAdapter("gamification", stubClient)).toThrow(/not implemented yet/);
+    expect(() => getAdapter("salesforce", stubClient)).toThrow(/Unknown resource/);
   });
 });
 

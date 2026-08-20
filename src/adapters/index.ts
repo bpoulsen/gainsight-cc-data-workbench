@@ -39,10 +39,14 @@ export {
   normalizeTaxonomyRecord,
 } from "./taxonomy.js";
 export { EventsAdapter, normalizeAttendee, normalizeEvent } from "./events.js";
+export { GamificationAdapter, normalizeLeaderboardUser, normalizeUserPoints } from "./gamification.js";
+export { SearchAdapter, SEARCH_MAX_PAGE_SIZE, normalizeSearchHit, normalizeTagHit } from "./search.js";
 
 import { registerAdapter } from "./registry.js";
 import { ContentAdapter, CONTENT_RESOURCES } from "./content.js";
 import { EventsAdapter } from "./events.js";
+import { GamificationAdapter } from "./gamification.js";
+import { SearchAdapter } from "./search.js";
 import { TaxonomyAdapter, TAXONOMY_RESOURCES } from "./taxonomy.js";
 import { UsersAdapter } from "./users.js";
 
@@ -54,3 +58,5 @@ for (const resource of TAXONOMY_RESOURCES) {
   registerAdapter(resource, (client) => new TaxonomyAdapter(client, resource));
 }
 registerAdapter("events", (client) => new EventsAdapter(client));
+registerAdapter("gamification", (client) => new GamificationAdapter(client));
+registerAdapter("search", (client) => new SearchAdapter(client));

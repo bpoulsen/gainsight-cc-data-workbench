@@ -15,7 +15,9 @@ const PREFERRED_PREVIEW_COLUMNS = [
   "title",
   "email",
   "username",
+  "name",
   "author",
+  "points",
   "status",
   "created",
 ] as const;

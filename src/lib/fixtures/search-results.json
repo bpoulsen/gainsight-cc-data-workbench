@@ -1,0 +1,40 @@
+{
+  "community": [
+    {
+      "id": 101,
+      "publicId": 501,
+      "contentType": "question",
+      "url": "/question/501/csv-export",
+      "title": "How do I export CSV?",
+      "content": "Use the workbench export command",
+      "firstPost": "How do I export CSV?",
+      "categoryId": 6,
+      "categoryName": "Getting started",
+      "sectionName": "Help",
+      "parentCategoryName": "General",
+      "tags": ["csv", "export"],
+      "hasAnswer": true,
+      "authorId": 7,
+      "authorName": "ops",
+      "createdAt": 1700000000
+    },
+    {
+      "id": 202,
+      "publicId": 602,
+      "contentType": "article",
+      "url": "/article/602/bulk-jobs",
+      "title": "Bulk jobs",
+      "content": "One named operation per CSV",
+      "firstPost": "Bulk jobs",
+      "categoryId": null,
+      "categoryName": null,
+      "sectionName": null,
+      "parentCategoryName": null,
+      "tags": [],
+      "hasAnswer": false,
+      "authorId": 8,
+      "authorName": "mod",
+      "createdAt": 1700001000
+    }
+  ]
+}

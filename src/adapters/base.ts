@@ -71,6 +71,8 @@ const RESOURCE_ALIASES: Record<string, ResourceName> = {
   productareas: "productAreas",
   "idea-statuses": "ideaStatuses",
   ideastatuses: "ideaStatuses",
+  leaderboard: "gamification",
+  points: "gamification",
 };
 
 export type OperationKind = "create" | "update" | "delete" | "read";

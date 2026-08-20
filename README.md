@@ -150,8 +150,10 @@ pnpm gs --profile sandbox --resource users --op updateField --csv users.csv --co
 2. **10,000-topic cap** on unified list (`GET /v2/topics`). Broader exports need narrower filters or sharding by category/date.
 3. **Articles are created as drafts** and published in a separate step.
 4. **Events** have no category filter and no permanent-delete endpoint. Trash/restore is `toggleTrashed`. Attendee export is `userId` + `signedUpAt` (no email). `signup` / `cancelSignUp` are side-effecting for members.
-5. **Bulk native APIs** are roles/badges only.
-6. **`scope=read write`** is required for `/v2`.
+5. **Gamification** explore is leaderboards (`GET /leaderboard` or `/leaderboard/weekly`) or assigned points (`GET /points?userId[]=`). Bulk assign is `POST /points/assign` `{ user, points }` (no reason field). Badge award/revoke stays on **users**.
+6. **Search** is explore/export only (`GET /search`, optional tag search). Federated index write/delete is out of v1.
+7. **Bulk native APIs** are roles/badges only.
+8. **`scope=read write`** is required for `/v2`.
 
 Official API docs: [https://api2-eu-west-1.insided.com/docs/community/](https://api2-eu-west-1.insided.com/docs/community/)
 
@@ -168,7 +170,7 @@ src/lib/audit.ts             Append-only logs/jobs.jsonl
 src/lib/csv.ts               Streaming CSV reader/writer, column mapping, flatten
 src/lib/identityResolver.ts  User id/email resolution with per-job cache
 src/generated/               OpenAPI types (pnpm generate:api)
-src/adapters/                Resource adapters (users, content, taxonomy, events)
+src/adapters/                Resource adapters (users, content, taxonomy, events, gamification, search)
 src/commands/                export, bulk, and interactive wizard
 src/wizard/                  Wizard helpers and @clack/prompts UI
 docs/prd/prd.md              Product requirements
