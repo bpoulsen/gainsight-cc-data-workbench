@@ -1,0 +1,2115 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "User API",
+        "version": "20260811093422"
+    },
+    "servers": [
+        {
+            "url": "/"
+        }
+    ],
+    "paths": {
+        "/user": {
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Fetches all users",
+                "description": "Fetches all users",
+                "operationId": "fetchUsers",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "page number of a paginated list starts from 1",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "pageSize",
+                        "in": "query",
+                        "description": "the amount of results displayed in a paginated list, defaults to 25",
+                        "schema": {
+                            "type": "integer",
+                            "default": 25
+                        }
+                    },
+                    {
+                        "name": "_returnIterable",
+                        "in": "query",
+                        "description": "whether to return users as iterable or not. Defaults to false for backwards compatibility",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
+                    {
+                        "name": "filter[roles.rolename][]",
+                        "in": "query",
+                        "description": "Filter by role names. Use multiple values for filtering by multiple roles.",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "example": "roles.registered"
+                            }
+                        },
+                        "example": [
+                            "roles.registered",
+                            "roles.admin"
+                        ]
+                    },
+                    {
+                        "name": "filter[badges.badgeid][]",
+                        "in": "query",
+                        "description": "Filter by badge IDs. Use multiple values for filtering by multiple badges.",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer",
+                                "example": 1
+                            }
+                        },
+                        "example": [
+                            1,
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "name": "filter[userid][]",
+                        "in": "query",
+                        "description": "Filter by user IDs. Use multiple values for filtering by multiple users.",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer",
+                                "example": 123
+                            }
+                        },
+                        "example": [
+                            123,
+                            456,
+                            789
+                        ]
+                    },
+                    {
+                        "name": "filter[joindate][from]",
+                        "in": "query",
+                        "description": "Filter users who joined on or after this date (yyyy-mm-dd format).",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2024-01-01"
+                        }
+                    },
+                    {
+                        "name": "filter[joindate][to]",
+                        "in": "query",
+                        "description": "Filter users who joined on or before this date (yyyy-mm-dd format).",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2024-06-29"
+                        }
+                    },
+                    {
+                        "name": "filter[lastactivity][from]",
+                        "in": "query",
+                        "description": "Filter users whose last activity was on or after this date (yyyy-mm-dd format).",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2024-01-01"
+                        }
+                    },
+                    {
+                        "name": "filter[lastactivity][to]",
+                        "in": "query",
+                        "description": "Filter users whose last activity was on or before this date (yyyy-mm-dd format).",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2024-06-29"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns users",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "discriminator": {
+                                        "propertyName": "_returnIterable",
+                                        "mapping": {
+                                            "1": "#/components/schemas/IterableUserResponse",
+                                            "0": "#/components/schemas/UserResponse"
+                                        }
+                                    },
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/UserResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/IterableUserResponse"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/user/{id}": {
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Fetch a single user",
+                "description": "Fetch a single user by UserId",
+                "operationId": "fetchSingleUser",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "The id of the user to be retrieved",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User data",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/gamification/badges": {
+            "get": {
+                "tags": [
+                    "Gamification: Badges"
+                ],
+                "summary": "Fetch list of badges",
+                "operationId": "list",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "page number of a paginated list starts from 1",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "pageSize",
+                        "in": "query",
+                        "description": "the amount of results displayed in a paginated list, defaults to 10",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10
+                        }
+                    },
+                    {
+                        "name": "filters",
+                        "in": "query",
+                        "description": "filters the list: e.g. &filters[manualOnly]=1",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns badges",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BadgesListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/gamification/badge/{badgeId}": {
+            "delete": {
+                "tags": [
+                    "Gamification: Badges"
+                ],
+                "summary": "Delete a badge",
+                "description": "Permanently delete a badge identified by ID from community and revoke it from all users",
+                "operationId": "deleteBadge",
+                "parameters": [
+                    {
+                        "name": "badgeId",
+                        "in": "path",
+                        "description": "The ID of the badge to be deleted",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "The badge has been deleted"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/user/register": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Register a new user",
+                "description": "Returns a Json User. The profile_field option in the request body provides a way to add profile fields to the registration. The key refers to an existing profile field id. Note that profile fields can be set as mandatory registration fields.",
+                "operationId": "register",
+                "requestBody": {
+                    "description": "User Object",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "data": {
+                                        "$ref": "#/components/schemas/UserRegisterRequest"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/UserRegistered"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/user/{id}/erase": {
+            "delete": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Deletes an existing user",
+                "description": "Deletes an existing user and anonymizes content created by the user",
+                "operationId": "erase",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "The user id to delete.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "User erased"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/user/{id}/role": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Add a role to a user",
+                "description": "Adds a role to an existing user",
+                "operationId": "addRole",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "UserId to which role should be added",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Roles to be added to the user",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "data": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "example": {
+                                            "user_role": [
+                                                "roles.registered"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Role has been added to the user. Text containing ‘Done'"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/user/bulk/role": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Bulk add roles to users",
+                "description": "Bulk add roles to users",
+                "operationId": "bulkUserAddRole",
+                "requestBody": {
+                    "description": "Custom Roles to be added to the user",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "data": {
+                                        "properties": {
+                                            "userIds": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "number"
+                                                },
+                                                "example": [
+                                                    2,
+                                                    3
+                                                ]
+                                            },
+                                            "roleIds": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "number"
+                                                },
+                                                "example": [
+                                                    7,
+                                                    13
+                                                ]
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": ""
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Bulk remove roles from users",
+                "description": "Bulk remove roles from users",
+                "operationId": "bulkUserRemoveRole",
+                "requestBody": {
+                    "description": "Custom Roles to be removed from the user",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "data": {
+                                        "properties": {
+                                            "userIds": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "number"
+                                                },
+                                                "example": [
+                                                    3,
+                                                    4
+                                                ]
+                                            },
+                                            "roleIds": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "number"
+                                                },
+                                                "example": [
+                                                    2,
+                                                    3
+                                                ]
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": ""
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/user/bulk/badge": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Bulk Award Badges to users",
+                "description": "Bulk Award badges to users",
+                "operationId": "bulkUserAwardBadge",
+                "requestBody": {
+                    "description": "Badges to be added to the user",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "data": {
+                                        "properties": {
+                                            "userIds": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "number"
+                                                },
+                                                "example": [
+                                                    8,
+                                                    19
+                                                ]
+                                            },
+                                            "badgeIds": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "number"
+                                                },
+                                                "example": [
+                                                    11,
+                                                    12
+                                                ]
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": ""
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Bulk revoke badges from users",
+                "description": "Bulk revoke badges from users",
+                "operationId": "bulkUserRevokeBadge",
+                "requestBody": {
+                    "description": "Revoke Badge from the user",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "data": {
+                                        "properties": {
+                                            "userIds": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "number"
+                                                },
+                                                "example": [
+                                                    1,
+                                                    6
+                                                ]
+                                            },
+                                            "badgeIds": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "number"
+                                                },
+                                                "example": [
+                                                    3,
+                                                    5
+                                                ]
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": ""
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/user/{userId}/role/{roleName}": {
+            "delete": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Revoke a custom role from a user",
+                "description": "Revokes a custom role from an existing user",
+                "operationId": "revokeRole",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "description": "UserId from which the role will be revoked",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "roleName",
+                        "in": "path",
+                        "description": "Name of the role to be revoked",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Success response with no content"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/user/{userId}/badge/{badgeId}": {
+            "put": {
+                "tags": [
+                    "User: Badges"
+                ],
+                "summary": "Award a badge to an user",
+                "description": "Award a badge identified by ID to the user identified by the user ID",
+                "operationId": "awardBadge",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "description": "The ID of the user to award the badge to",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "badgeId",
+                        "in": "path",
+                        "description": "The ID of the badge to be awarded",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "The badge has been awarded"
+                    },
+                    "204": {
+                        "description": "The badge was already awarded to this user"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "User: Badges"
+                ],
+                "summary": "Revoke badge from user",
+                "description": "Revoke badge from user",
+                "operationId": "revoke_badge",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "description": "The id of the user to revoke badge from.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "badgeId",
+                        "in": "path",
+                        "description": "The id of the badge to be revoked.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Badge has been revoked"
+                    },
+                    "400": {
+                        "description": "User with given id doesn't have badge with given id"
+                    },
+                    "404": {
+                        "description": "User not found or Badge not found"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/user/{field}/{value}": {
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Find User by field / value",
+                "description": "Returns a Json User",
+                "operationId": "findBy",
+                "parameters": [
+                    {
+                        "name": "field",
+                        "in": "path",
+                        "description": "The field to look for",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string",
+                            "enum": [
+                                "email",
+                                "userid",
+                                "oracle_sso_id",
+                                "token_sso_id",
+                                "openidconnect_sso_id",
+                                "facebook_sso_id",
+                                "janrain_sso_id",
+                                "saml_sso_id",
+                                "linkedin_sso_id",
+                                "username",
+                                "oauth2_sso_id"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "value",
+                        "in": "path",
+                        "description": "The value to look for",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/FindByUser"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/user/{id}/{field}/{value}": {
+            "put": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update a field in user's profile",
+                "description": "Returns a Json User",
+                "operationId": "UpdateBy",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "The id of the user",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "field",
+                        "in": "path",
+                        "description": "The name of the field to be updated",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string",
+                            "enum": [
+                                "email",
+                                "oracle_sso_id",
+                                "token_sso_id",
+                                "openidconnect_sso_id",
+                                "facebook_sso_id",
+                                "janrain_sso_id",
+                                "saml_sso_id",
+                                "linkedin_sso_id",
+                                "username",
+                                "oauth2_sso_id",
+                                "avatar"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "value",
+                        "in": "path",
+                        "description": "The new value (url encoded)",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/FindByUser"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/user/{id}/profile_field/{field}/{value}": {
+            "put": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update a custom field in user's profile",
+                "description": "Returns a Json User",
+                "operationId": "UpdateProfileField",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "The id of the user",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "field",
+                        "in": "path",
+                        "description": "The name of the field to be updated",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    },
+                    {
+                        "name": "value",
+                        "in": "path",
+                        "description": "The new value (url encoded)",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/FindByUser"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/user/{id}/profile_field/{field}": {
+            "delete": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Delete a custom field in user's profile",
+                "description": "Returns a Json User",
+                "operationId": "DeleteProfileField",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "The id of the user",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "field",
+                        "in": "path",
+                        "description": "The name of the field that will be deleted",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/FindByUser"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/remotelogout/{field}/{value}": {
+            "delete": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Find User by field / value and flag it for logout",
+                "description": "Generates a Remote logout for a User",
+                "operationId": "remoteLogout",
+                "parameters": [
+                    {
+                        "name": "field",
+                        "in": "path",
+                        "description": "The field to look for",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string",
+                            "enum": [
+                                "email",
+                                "userid",
+                                "oracle_sso_id",
+                                "token_sso_id",
+                                "openidconnect_sso_id",
+                                "facebook_sso_id",
+                                "janrain_sso_id",
+                                "saml_sso_id",
+                                "linkedin_sso_id",
+                                "username",
+                                "oauth2_sso_id"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "value",
+                        "in": "path",
+                        "description": "The value to look for",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/FindByUser"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Exception": {
+                "properties": {
+                    "message": {
+                        "description": "Generic error message",
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "Internal Server Error"
+                    }
+                },
+                "type": "object"
+            },
+            "UserRegisteredResponse": {
+                "properties": {
+                    "userid": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "email": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "user@insided.com"
+                    },
+                    "username": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "user"
+                    },
+                    "rank": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "joindate": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "sso": {
+                        "type": "object",
+                        "example": {
+                            "facebook": "333ABBDDD",
+                            "oauth2": "4545ag63274"
+                        },
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "UserRegisterRequest": {
+                "required": [
+                    "email",
+                    "username",
+                    "password"
+                ],
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "example": "user@insided.com"
+                    },
+                    "username": {
+                        "description": "Username must be unique. It must be between 3 to 30 characters long. It can only contain alphanumeric characters, spaces and the following special characters: . ' - _",
+                        "type": "string",
+                        "example": "user"
+                    },
+                    "password": {
+                        "description": "Password must be at least 6 characters long, it can not contain white space, and it shouldn't consist of one repeated character",
+                        "type": "string",
+                        "example": "asdTW$sdjksd"
+                    },
+                    "user_role": {
+                        "description": "If specified, must contain exactly one main role, and may contain custom roles.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "default": [
+                            "roles.registered"
+                        ],
+                        "example": [
+                            "roles.registered",
+                            "Option A",
+                            "Option B",
+                            "Other"
+                        ]
+                    },
+                    "profile_field": {
+                        "type": "object",
+                        "example": {
+                            "12": "Smith",
+                            "34": "John"
+                        },
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "sso": {
+                        "type": "object",
+                        "example": {
+                            "facebook": "333ABBDDD",
+                            "oauth2": "4545ag63274"
+                        },
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "FindByUserResponse": {
+                "properties": {
+                    "userid": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "email": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "user@insided.com"
+                    },
+                    "username": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "user"
+                    },
+                    "rank": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "joindate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "example": "2019-07-16T14:59:00+02:00"
+                    },
+                    "profileFields": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ProfileFields"
+                        },
+                        "readOnly": true,
+                        "example": {
+                            "NormalizedValue": "A string value",
+                            "name": "A field name"
+                        }
+                    },
+                    "roles": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AuthItems"
+                        },
+                        "readOnly": true
+                    },
+                    "user_statistics": {
+                        "type": "object",
+                        "example": {
+                            "post_count": 0,
+                            "likes": 0,
+                            "likes_given": 0,
+                            "topic_count": 0,
+                            "topic_answered_count": 0
+                        },
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "sso": {
+                        "type": "object",
+                        "example": {
+                            "facebook": "333ABBDDD",
+                            "oauth2": "4545ag63274"
+                        },
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "ProfileFields": {
+                "properties": {
+                    "NormalizedValue": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "UserResponse": {
+                "properties": {
+                    "statistics": {
+                        "properties": {
+                            "count": {
+                                "type": "integer",
+                                "example": "22"
+                            }
+                        },
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object",
+                "additionalProperties": {
+                    "$ref": "#/components/schemas/User"
+                }
+            },
+            "IterableUserResponse": {
+                "properties": {
+                    "users": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/User"
+                        }
+                    },
+                    "statistics": {
+                        "properties": {
+                            "count": {
+                                "type": "integer",
+                                "example": "22"
+                            }
+                        },
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "User": {
+                "properties": {
+                    "userid": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "usergroupid": {
+                        "description": "Not in use",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "membergroupids": {
+                        "description": "Not in use",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "displaygroupid": {
+                        "description": "Not in use",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "username": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "user"
+                    },
+                    "email": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "user@insided.com"
+                    },
+                    "posts": {
+                        "description": "The number of visible replies created by the user",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "deleted_posts": {
+                        "description": "The number of deleted replies created by the user",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "options": {
+                        "description": "Bitmask containing values for two personal settings",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "autosubscribe": {
+                        "description": "Boolean flag for email notifications",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "customoptions": {
+                        "description": "Custom options bitmask",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "topics": {
+                        "description": "The number of visible topics created by the user",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "solved": {
+                        "description": "The number of replies marked as the best answer",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "ipaddress": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "198.199.125.238"
+                    },
+                    "usertitle": {
+                        "description": "Custom user title",
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "customtitle": {
+                        "description": "Boolean flag for custom title",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "session_ids_flagged_for_logout": {
+                        "description": "List of session IDs flagged for logout",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "external_logout_at": {
+                        "description": "Timestamp for external logout",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "pmunread": {
+                        "description": "The number of unread private messages",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "subscriptions": {
+                        "description": "The total number of topic subscriptions",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "pmtotal": {
+                        "description": "The total number of private messages received",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "following": {
+                        "description": "The number of users followed by this user",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "followers": {
+                        "description": "The number of users following this user",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "avatar": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "signature": {
+                        "description": "User's signature displayed under posts",
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "reputation": {
+                        "description": "User's reputation score",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "lastvisit": {
+                        "description": "Timestamp of the user's last session",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "lastactivity": {
+                        "description": "Timestamp of the user's last activity",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "insided_sso_customeruid": {
+                        "description": "SSO customer UID",
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "reviewcount": {
+                        "description": "The number of reviews created by the user",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "ratingcount": {
+                        "description": "The number of ratings given by the user",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "lastpostid": {
+                        "description": "ID of the last reply created by the user",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "lastpost": {
+                        "description": "Timestamp of the user's last reply",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "joindate": {
+                        "description": "Timestamp of the user's registration",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "likes": {
+                        "description": "Total likes received by the user",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "likes_given": {
+                        "description": "Total likes given by the user",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "blogposts": {
+                        "description": "The number of blog posts created by the user",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "researches": {
+                        "description": "The number of researches conducted by the user",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "rank_id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "rank_name": {
+                        "description": "The name of the rank achieved by the user",
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "rank_display_name": {
+                        "description": "The displayed name of the user's rank",
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "rank_avatar_icon": {
+                        "description": "Image representing the rank",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "rank_avatar_icon_thumb": {
+                        "description": "Thumbnail image for the rank",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "is_moderator": {
+                        "description": "Boolean flag indicating if the user is a moderator",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "cdn": {
+                        "description": "Base URL for CDN",
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "autoAddToFavorites": {
+                        "description": "Indicates if replying or creating a topic subscribes the user to notifications",
+                        "type": "boolean",
+                        "readOnly": true
+                    },
+                    "crudListCacheDependencyKey": {
+                        "description": "Cache dependency key for CRUD operations",
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "id": {
+                        "description": "User ID",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "_related": {
+                        "properties": {
+                            "userprofilefields": {
+                                "type": "array",
+                                "items": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "userid": {
+                                            "type": "integer"
+                                        },
+                                        "profilefieldid": {
+                                            "type": "integer"
+                                        },
+                                        "value": {
+                                            "type": "string"
+                                        },
+                                        "profilefield_name": {
+                                            "type": "string"
+                                        },
+                                        "_related": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            },
+                            "badges": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object"
+                                }
+                            },
+                            "badgesCount": {
+                                "type": "integer"
+                            },
+                            "roles": {
+                                "type": "array",
+                                "items": {
+                                    "properties": {
+                                        "auth_item_id": {
+                                            "type": "integer"
+                                        },
+                                        "itemname": {
+                                            "type": "string"
+                                        },
+                                        "userid": {
+                                            "type": "integer"
+                                        },
+                                        "bizrule": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "data": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "_related": {
+                                            "properties": {
+                                                "items": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "type": {
+                                                            "type": "integer"
+                                                        },
+                                                        "description": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        },
+                                                        "bizrule": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        },
+                                                        "data": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        },
+                                                        "visible": {
+                                                            "type": "integer"
+                                                        },
+                                                        "main": {
+                                                            "type": "integer"
+                                                        },
+                                                        "order": {
+                                                            "type": "integer"
+                                                        },
+                                                        "exclude_for_spam_check": {
+                                                            "type": "integer"
+                                                        },
+                                                        "_related": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "BadgesListResponse": {
+                "properties": {
+                    "totalItems": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "example": "1"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Badge"
+                        },
+                        "readOnly": true
+                    }
+                },
+                "type": "object"
+            },
+            "Badge": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "example": "1"
+                    },
+                    "title": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "Ready to mingle"
+                    },
+                    "description": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "Thanks for being so active around here! :) We hope that you keep inSpiring others with your replies!"
+                    },
+                    "enableBadgeRules": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "example": "false"
+                    },
+                    "image": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "https://uploads-eu-west-1.insided.com/inspired-en/attachment/a1993b51-8a7b-4e89-921a-bef62a5be588.svg"
+                    },
+                    "thumbImage": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "https://uploads-eu-west-1.insided.com/inspired-en/attachment/a1993b51-8a7b-4e89-921a-bef62a5be588_thumb.svg"
+                    }
+                },
+                "type": "object"
+            },
+            "PageInfo": {
+                "properties": {
+                    "username": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "user"
+                    },
+                    "topic_id": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "example": "4"
+                    },
+                    "topic_title": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "Question1"
+                    },
+                    "category_id": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "example": "112"
+                    },
+                    "category_title": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "Welcome"
+                    },
+                    "forum_id": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "example": "116"
+                    },
+                    "forum_title": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "News"
+                    },
+                    "prefix_id": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "vraag"
+                    },
+                    "content_id": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "example": "0"
+                    },
+                    "starter_user_id": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "example": "2006"
+                    },
+                    "starter_user_username": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "example": "modUser01"
+                    },
+                    "starter_usergroup_title": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": ""
+                    },
+                    "status": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "visible"
+                    },
+                    "visible": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "example": "1"
+                    },
+                    "open": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "1"
+                    },
+                    "content_type": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "question"
+                    }
+                },
+                "type": "object"
+            },
+            "ViewUser": {
+                "properties": {
+                    "username": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "user"
+                    },
+                    "userid": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "pmtotal": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "pmunread": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "likes": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "subscriptions": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "following": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "followers": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "topics": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "solved": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "likes_given": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "badges": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "readOnly": true,
+                        "example": [
+                            "Truly fantastic"
+                        ]
+                    },
+                    "roles": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "readOnly": true,
+                        "example": [
+                            "roles.superuser"
+                        ]
+                    },
+                    "roleIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "readOnly": true,
+                        "example": [
+                            "11"
+                        ]
+                    },
+                    "favorites": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "2"
+                    },
+                    "rank": {
+                        "type": "string",
+                        "readOnly": true
+                    }
+                },
+                "type": "object"
+            },
+            "AuthItems": {
+                "properties": {
+                    "auth_item": {
+                        "type": "object",
+                        "items": {
+                            "$ref": "#/components/schemas/AuthItem"
+                        },
+                        "readOnly": true,
+                        "example": {
+                            "name": "roles.moderator",
+                            "main": true
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "AuthItem": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "roles.moderator"
+                    },
+                    "main": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "example": "true"
+                    }
+                },
+                "type": "object"
+            },
+            "Version": {
+                "properties": {
+                    "version": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "1501507459"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "responses": {
+            "UserRegistered": {
+                "description": "Successful response",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "properties": {
+                                "user": {
+                                    "$ref": "#/components/schemas/UserRegisteredResponse"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "FindByUser": {
+                "description": "Successful response",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "properties": {
+                                "result": {
+                                    "$ref": "#/components/schemas/FindByUserResponse"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Not Found"
+            },
+            "ValidationError": {
+                "description": "Validation error"
+            },
+            "Error": {
+                "description": "Unexpected error",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Exception"
+                        }
+                    }
+                }
+            },
+            "Version": {
+                "description": "Success response",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Version"
+                        }
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "insided_auth": {
+                "type": "oauth2",
+                "flows": {
+                    "clientCredentials": {
+                        "tokenUrl": "/oauth2/token",
+                        "scopes": {
+                            "": "This API does not use scopes"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "User",
+            "description": ""
+        },
+        {
+            "name": "User: Badges",
+            "description": "Award a badge to a user or revoke a badge from a user based on events that occur outside the community platform."
+        },
+        {
+            "name": "Gamification: Badges",
+            "description": "A badge is an award that publicly highlights something positive that a user has achieved. Badges can be awarded based on user activity in the community, or awarded via our API using any criteria you'd like."
+        }
+    ]
+}

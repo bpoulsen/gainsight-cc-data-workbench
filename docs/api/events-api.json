@@ -1,0 +1,2735 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Events API",
+        "description": "Events API Private Integration",
+        "version": "2019-04-04"
+    },
+    "servers": [
+        {
+            "url": "\/v2"
+        }
+    ],
+    "paths": {
+        "\/events\/create": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Create an event",
+                "description": "Moderators can create an event with a title, description, event timezone, event start time\/date, and event end time\/date. Events do not have a category.\n\nEvents can be created and published immediately, or can be created as draft and published later. Draft events are not publicly visible.\n\nOptionally, moderators can provide a location for an event, as well as a URL for end users to find more information or formally register for an event. Moderators can optionally set a display label for a  URL, to provide more context for the end user about the link.\n\nIn addition, moderators can specify an event type for the event (a label highlighting the type of event, e.g. Webinar, Conference, Meetup).\n\nModerators can also add a custom confirmation message that is shown to end users after they press attend; for example, to highlight any actions that the end user needs to take external to the community.\n\nEvents can also optionally have a featured image with a valid url. The allowed image extensions for featured image are png, jpeg, jpg, gif.",
+                "operationId": "createEvent",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator creating the event",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/CreateEventRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Event created",
+                        "headers": {
+                            "Location": {
+                                "description": "Event URL",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/MalformedInput"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": [],
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/create"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/draft": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Create an event as draft",
+                "description": "Moderators can create an event with a title, description, event timezone, event start time\/date, and event end time\/date. Events do not have a category.\n\nEvents can be created and published immediately, or can be created as draft and published later. Draft events are not publicly visible.\n\nOptionally, moderators can provide a location for an event, as well as a URL for end users to find more information or formally register for an event. Moderators can optionally set a display label for a  URL, to provide more context for the end user about the link.\n\nIn addition, moderators can specify an event type for the event (a label highlighting the type of event, e.g. Webinar, Conference, Meetup).\n\nModerators can also add a custom confirmation message that is shown to end users after they press attend; for example, to highlight any actions that the end user needs to take external to the community.\n\nEvents can also optionally have a featured image with a valid url. The allowed image extensions for featured image are png, jpeg, jpg, gif.",
+                "operationId": "createEventAsDraft",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator creating the event",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/CreateDraftRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Event created",
+                        "headers": {
+                            "Location": {
+                                "description": "Event URL",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/MalformedInput"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": [],
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/draft"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/publish": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Publish an event",
+                "operationId": "publishEvent",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator publishing the event",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Event published."
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/MalformedInput"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/publish"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/toggleTrashed": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Trash an event",
+                "operationId": "toggleEventTrashed",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator trashing the event",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/ToggleEventTrashRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Event trashed state updated"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/MalformedInput"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/toggleTrashed"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/reschedule": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Reschedule an event",
+                "operationId": "rescheduleEvent",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator rescheduling the event",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/RescheduleEventRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Event rescheduled"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/reschedule"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/signup": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Sign up to an event",
+                "operationId": "signupEvent",
+                "parameters": [
+                    {
+                        "name": "authorId",
+                        "in": "query",
+                        "description": "ID of the author signing up to the event",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Signed up to event"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/signup"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/cancelSignUp": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Cancel sign up to an event",
+                "operationId": "cancelSignUpEvent",
+                "parameters": [
+                    {
+                        "name": "authorId",
+                        "in": "query",
+                        "description": "ID of the author cancelling sign up to the event",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sign up to event cancelled"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/cancelSignUp"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/editTitle": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Edit an event title",
+                "operationId": "editEventTitle",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator editing the event title",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/EditEventTitleRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Event title updated"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/editTitle"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/editUrl": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Edit an event url",
+                "operationId": "editEventUrl",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator editing the event url",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/EditEventUrlRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Event url updated"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/editUrl"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/editExternalRegistrationUrl": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Edit an event external registration url",
+                "operationId": "editExternalRegistrationUrl",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator editing the event url",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/EditEventExternalRegistrationUrlRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Event external registration url updated"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/editExternalRegistrationUrl"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/editContent": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Edit an event content",
+                "operationId": "editEventContent",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator editing the event content",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/EditEventContentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Event content updated"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/editContent"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/editLocation": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Edit an event location",
+                "operationId": "editEventLocation",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator editing the event location",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/EditEventLocationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Event location updated"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/editLocation"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/editImage": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Edit an event image",
+                "operationId": "editEventImage",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator editing the event image",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/EditEventImageRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Event image updated"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/editImage"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/changeSignUpConfirmationMessage": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Change the confirmation message that gets displayed after a user signs up for the event",
+                "operationId": "changeSignUpConfirmationMessage",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator editing the event image",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/ChangeSignUpConfirmationMessageRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Event image updated"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/changeSignUpConfirmationMessage"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/changeFeaturedTopics": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Update the featured topics lists",
+                "operationId": "changeFeaturedTopics",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator editing the event image",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/EditFeaturedTopicsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Event Featured Topics Update updated"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/changeFeaturedTopics"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/changeType": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Change the eventType for a event.",
+                "operationId": "editEventType",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator editing the event type",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/EditEventTypeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Event Type updated"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/changeType"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/event-types\/{id}": {
+            "post": {
+                "tags": [
+                    "Event Types"
+                ],
+                "summary": "Change the Name for a event Type",
+                "operationId": "editEventTypeName",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator editing the event image",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/EditEventTypeNameRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "EventType name updated"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/event-types\/{id}"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Event Types"
+                ],
+                "summary": "Delete and EventType",
+                "operationId": "deleteEventType",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator creating the event",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "EventType deleted"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "delete",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/event-types\/{id}"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/event-types": {
+            "get": {
+                "tags": [
+                    "Event Types"
+                ],
+                "summary": "List event types",
+                "description": "Fetches a paginated list of event types",
+                "operationId": "getEventTypesList",
+                "parameters": [
+                    {
+                        "$ref": "#\/components\/parameters\/PageNumber"
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PageSize"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#\/components\/responses\/EventTypesList"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "get",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": [],
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/event-types"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Event Types"
+                ],
+                "summary": "Create an EventType",
+                "operationId": "createEventType",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator creating the event",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/CreateEventTypeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "EventType created"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/MalformedInput"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "put",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": [],
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/event-types"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/changeVisibility": {
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Changes visibility for an event, when provided with a user group id, it is only visible in the user group, else it is publicly visible.",
+                "operationId": "changeEventVisibility",
+                "parameters": [
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator editing the event title",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/ChangeEventVisibilityRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Event visibility changed"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": [
+                            "write"
+                        ]
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "post",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/changeVisibility"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}": {
+            "get": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Find Event by ID",
+                "description": "By default returns a visible event.",
+                "operationId": "getEvent",
+                "parameters": [
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    },
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator viewing the event, needed for viewing draft events.",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#\/components\/responses\/Event"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "get",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events": {
+            "get": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "List events",
+                "description": "Fetches a paginated list of events sorted by startdate in ascending order",
+                "operationId": "getEventList",
+                "parameters": [
+                    {
+                        "name": "X-USER-ID",
+                        "in": "header",
+                        "description": "Non moderator id of the user fetching the data. If `moderatorId` query parameter is provided, it takes precedence. If provided, public and user's group events are returned.",
+                        "required": false,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "moderatorId",
+                        "in": "query",
+                        "description": "ID of the moderator requesting the list of events. Takes precedence over `X-USER_ID` header.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "class",
+                        "in": "query",
+                        "description": "Retrieve a certain classification of events. One of 'past', 'published', 'upcoming', 'all', 'public'. `all` requires `moderatorId` to be provided.",
+                        "schema": {
+                            "type": "string",
+                            "default": "public",
+                            "pattern": "[a-z]",
+                            "enum": [
+                                "public",
+                                "published",
+                                "upcoming",
+                                "past",
+                                "all"
+                            ]
+                        },
+                        "example": "upcoming"
+                    },
+                    {
+                        "name": "filter",
+                        "in": "query",
+                        "description": "Deprecated. Use `class` instead. If both are provided, `class` takes precendence.",
+                        "required": false,
+                        "deprecated": true,
+                        "schema": {
+                            "type": "string",
+                            "default": "public",
+                            "pattern": "[a-z]",
+                            "enum": [
+                                "public",
+                                "published",
+                                "upcoming",
+                                "past",
+                                "all"
+                            ]
+                        },
+                        "example": "past"
+                    },
+                    {
+                        "name": "filters",
+                        "in": "query",
+                        "description": "Filter the list of events",
+                        "required": false,
+                        "schema": {
+                            "properties": {
+                                "type[]": {
+                                    "description": "Filter events based on event types",
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "example": "Meetup"
+                                    }
+                                },
+                                "in": {
+                                    "description": "Filter events based on a given comma separated list of event id's",
+                                    "type": "string",
+                                    "example": "15,22,36"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PageNumber"
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PageSize"
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/EventListOrder"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#\/components\/responses\/EventList"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "get",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": [],
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "\/events\/{id}\/attendees": {
+            "get": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Find event attendees by event ID",
+                "description": "Fetches a paginated list of attendees for event sorted by signed up date in descending order",
+                "operationId": "getAttendeeList",
+                "parameters": [
+                    {
+                        "name": "X-Prioritized-Attendee",
+                        "in": "header",
+                        "description": "Prioritized attendee to be on the first page.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PathEventId"
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PageNumber"
+                    },
+                    {
+                        "$ref": "#\/components\/parameters\/PageSize"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#\/components\/responses\/AttendeeList"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#\/components\/responses\/ServerError"
+                    }
+                },
+                "x-amazon-apigateway-integration": {
+                    "httpMethod": "get",
+                    "connectionType": "VPC_LINK",
+                    "connectionId": {
+                        "Ref": "SharedVPCLinkParam"
+                    },
+                    "type": "HTTP_PROXY",
+                    "passthroughBehavior": "WHEN_NO_MATCH",
+                    "requestParameters": {
+                        "integration.request.path.id": "method.request.path.id"
+                    },
+                    "uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "http:\/\/",
+                                {
+                                    "Ref": "SharedVPCNetworkLBDNSname"
+                                },
+                                "\/events\/{id}\/attendees"
+                            ]
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Author": {
+                "properties": {
+                    "id": {
+                        "description": "Author ID",
+                        "type": "string",
+                        "example": "7"
+                    },
+                    "username": {
+                        "description": "Username of the author",
+                        "type": "string",
+                        "example": "awesome_user"
+                    },
+                    "avatar": {
+                        "description": "Avatar of the author",
+                        "type": "string",
+                        "example": "http:\/\/example.com\/avatar123.jpg"
+                    }
+                },
+                "type": "object"
+            },
+            "BadRequestException": {
+                "example": {
+                    "message": "Unprocessable entity",
+                    "description": "Invalid or missing topic id"
+                },
+                "allOf": [
+                    {
+                        "$ref": "#\/components\/schemas\/Exception"
+                    },
+                    {
+                        "properties": {
+                            "description": {
+                                "description": "Explanation about the error",
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    }
+                ]
+            },
+            "DateRange": {
+                "properties": {
+                    "from": {
+                        "description": "from date e.g. 2018-06-20 (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "to": {
+                        "description": "to date e.g. 2018-06-20 (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date"
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "from": "2018-06-20",
+                    "to": "2018-12-20"
+                }
+            },
+            "Exception": {
+                "properties": {
+                    "message": {
+                        "description": "Generic error message",
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "Internal Server Error"
+                    }
+                },
+                "type": "object"
+            },
+            "Links": {
+                "properties": {
+                    "self": {
+                        "description": "The API urls of the requested object"
+                    }
+                },
+                "type": "object"
+            },
+            "Attendee": {
+                "properties": {
+                    "userId": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "1"
+                    },
+                    "eventId": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "2"
+                    },
+                    "signedUpAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "example": "2017-04-10T15:29:06+00:00"
+                    }
+                },
+                "type": "object"
+            },
+            "AttendeeList": {
+                "properties": {
+                    "result": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#\/components\/schemas\/Attendee"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "ChangeEventVisibilityRequest": {
+                "properties": {
+                    "userGroupId": {
+                        "type": "string",
+                        "example": "45"
+                    }
+                },
+                "type": "object"
+            },
+            "ChangeSignUpConfirmationMessageRequest": {
+                "required": [
+                    "message"
+                ],
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "My updated sign-up-confirmation-message"
+                    }
+                },
+                "type": "object"
+            },
+            "CreateDraftRequest": {
+                "required": [
+                    "title",
+                    "content"
+                ],
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 250,
+                        "minLength": 1,
+                        "pattern": "[a-z0-9]",
+                        "example": "A very interesting event"
+                    },
+                    "type": {
+                        "type": "string",
+                        "example": "Meetup"
+                    },
+                    "content": {
+                        "type": "string",
+                        "maxLength": 50000,
+                        "minLength": 1,
+                        "example": "This webinar will teach you all you need to know about everything"
+                    },
+                    "startsAt": {
+                        "description": "ISO format date-time representing the start date and time of the event",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2017-04-01T15:29:06+02:00"
+                    },
+                    "endsAt": {
+                        "description": "ISO format date-time representing the end date and time of the event",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2017-04-01T20:29:06+02:00"
+                    },
+                    "timezone": {
+                        "description": "A valid timezone name from the IANA database. For reference: [list of IANA timezone names](https:\/\/en.wikipedia.org\/wiki\/List_of_tz_database_time_zones)",
+                        "type": "string",
+                        "example": "Europe\/Amsterdam"
+                    },
+                    "location": {
+                        "type": "string",
+                        "example": "New York"
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri",
+                        "example": "https:\/\/example.com"
+                    },
+                    "image": {
+                        "type": "string",
+                        "format": "uri",
+                        "example": "https:\/\/example.com\/some-optional-image.png"
+                    },
+                    "externalRegistrationUrl": {
+                        "description": "Note that event with configured external RSVP can not be configured back with community RSVP",
+                        "type": "string",
+                        "format": "uri",
+                        "example": "https:\/\/some.valid.url"
+                    },
+                    "externalRegistrationUrlLabel": {
+                        "type": "string",
+                        "example": "My Registration Page"
+                    },
+                    "featuredTopics": {
+                        "type": "array",
+                        "items": {
+                            "description": "List of featured topics",
+                            "properties": {
+                                "privateId": {
+                                    "type": "integer"
+                                },
+                                "publicId": {
+                                    "type": "integer"
+                                },
+                                "contentType": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "example": [
+                            {
+                                "publicId": "382",
+                                "privateId": "22",
+                                "contentType": "productUpdate"
+                            },
+                            {
+                                "publicId": "10",
+                                "privateId": "212",
+                                "contentType": "event"
+                            }
+                        ]
+                    },
+                    "confirmationMessage": {
+                        "type": "string",
+                        "example": "My Confirmation Message"
+                    },
+                    "userGroupId": {
+                        "type": "string",
+                        "example": "21"
+                    }
+                },
+                "type": "object"
+            },
+            "CreateEventRequest": {
+                "required": [
+                    "title",
+                    "content",
+                    "startsAt",
+                    "endsAt",
+                    "timezone"
+                ],
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 250,
+                        "minLength": 1,
+                        "pattern": "[a-z0-9]",
+                        "example": "A very interesting event"
+                    },
+                    "type": {
+                        "type": "string",
+                        "example": "Meetup"
+                    },
+                    "content": {
+                        "type": "string",
+                        "maxLength": 50000,
+                        "minLength": 1,
+                        "example": "This webinar will teach you all you need to know about everything"
+                    },
+                    "startsAt": {
+                        "description": "ISO format date-time representing the start date and time of the event",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2017-04-01T15:29:06+02:00"
+                    },
+                    "endsAt": {
+                        "description": "ISO format date-time representing the end date and time of the event",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2017-04-01T20:29:06+02:00"
+                    },
+                    "timezone": {
+                        "description": "A valid timezone name from the IANA database. For reference: [list of IANA timezone names](https:\/\/en.wikipedia.org\/wiki\/List_of_tz_database_time_zones)",
+                        "type": "string",
+                        "example": "Europe\/Amsterdam"
+                    },
+                    "location": {
+                        "type": "string",
+                        "example": "New York"
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri",
+                        "example": "https:\/\/example.com"
+                    },
+                    "image": {
+                        "type": "string",
+                        "format": "uri",
+                        "example": "https:\/\/example.com\/some-optional-image.png"
+                    },
+                    "externalRegistrationUrl": {
+                        "description": "Note that event with configured external RSVP can not be configured back with community RSVP",
+                        "type": "string",
+                        "format": "uri",
+                        "example": "https:\/\/some.valid.url"
+                    },
+                    "externalRegistrationUrlLabel": {
+                        "type": "string",
+                        "example": "My Registration Page"
+                    },
+                    "featuredTopics": {
+                        "type": "array",
+                        "items": {
+                            "description": "List of featured topics",
+                            "properties": {
+                                "privateId": {
+                                    "type": "integer"
+                                },
+                                "publicId": {
+                                    "type": "integer"
+                                },
+                                "contentType": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "example": [
+                            {
+                                "publicId": "382",
+                                "privateId": "22",
+                                "contentType": "productUpdate"
+                            },
+                            {
+                                "publicId": "10",
+                                "privateId": "212",
+                                "contentType": "event"
+                            }
+                        ]
+                    },
+                    "confirmationMessage": {
+                        "type": "string",
+                        "example": "My Confirmation Message"
+                    },
+                    "userGroupId": {
+                        "type": "string",
+                        "example": "21"
+                    }
+                },
+                "type": "object"
+            },
+            "CreateEventTypeRequest": {
+                "required": [
+                    "typeName"
+                ],
+                "properties": {
+                    "typeName": {
+                        "type": "string",
+                        "example": "MeetUp"
+                    }
+                },
+                "type": "object"
+            },
+            "EditEventContentRequest": {
+                "required": [
+                    "content"
+                ],
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "example": "My updated content"
+                    }
+                },
+                "type": "object"
+            },
+            "EditEventExternalRegistrationUrlRequest": {
+                "required": [
+                    "externalRegistrationUrl",
+                    "externalRegistrationUrlLabel"
+                ],
+                "properties": {
+                    "externalRegistrationUrl": {
+                        "type": "string",
+                        "example": "https:\/\/some.valid.url"
+                    },
+                    "externalRegistrationUrlLabel": {
+                        "type": "string",
+                        "example": "My Registration Page"
+                    }
+                },
+                "type": "object"
+            },
+            "EditEventImageRequest": {
+                "required": [
+                    "image"
+                ],
+                "properties": {
+                    "image": {
+                        "type": "string",
+                        "example": "http:\/\/example.com\/image.jpg"
+                    }
+                },
+                "type": "object"
+            },
+            "EditEventLocationRequest": {
+                "required": [
+                    "location"
+                ],
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "example": "My updated location"
+                    }
+                },
+                "type": "object"
+            },
+            "EditEventTitleRequest": {
+                "required": [
+                    "title"
+                ],
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "example": "My updated title"
+                    }
+                },
+                "type": "object"
+            },
+            "EditEventTypeNameRequest": {
+                "required": [
+                    "typeName"
+                ],
+                "properties": {
+                    "typeName": {
+                        "type": "string",
+                        "example": "In-person"
+                    }
+                },
+                "type": "object"
+            },
+            "EditEventTypeRequest": {
+                "required": [
+                    "eventTypeName"
+                ],
+                "properties": {
+                    "eventTypeName": {
+                        "type": "string",
+                        "example": "Updated new Type"
+                    }
+                },
+                "type": "object"
+            },
+            "EditEventUrlRequest": {
+                "required": [
+                    "url"
+                ],
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "example": "https:\/\/some.valid.url"
+                    },
+                    "urlLabel": {
+                        "type": "string",
+                        "example": "Some label"
+                    }
+                },
+                "type": "object"
+            },
+            "EditFeaturedTopicsRequest": {
+                "required": [
+                    "featuredTopics"
+                ],
+                "properties": {
+                    "featuredTopics": {
+                        "type": "array",
+                        "items": {
+                            "description": "List of featured topics",
+                            "properties": {
+                                "privateId": {
+                                    "type": "integer"
+                                },
+                                "publicId": {
+                                    "type": "integer"
+                                },
+                                "contentType": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "example": [
+                            {
+                                "privateId": 21,
+                                "publicId": 382,
+                                "contentType": "productUpdate"
+                            },
+                            {
+                                "privateId": 29,
+                                "publicId": 386,
+                                "contentType": "article"
+                            }
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "Event": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "1"
+                    },
+                    "title": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "My first meetup"
+                    },
+                    "content": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "Some information about my meetup"
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "example": "2017-04-01T15:29:06+00:00"
+                    },
+                    "endDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "example": "2017-04-01T20:29:06+00:00"
+                    },
+                    "location": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "Amsterdam"
+                    },
+                    "url": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "https:\/\/fake.meetup.com"
+                    },
+                    "externalRegistrationUrl": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "https:\/\/fake.meetup.com"
+                    },
+                    "externalRegistrationUrlLabel": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "Button name"
+                    },
+                    "image": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "https:\/\/fake.meetup.com\/image.png"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "example": "2017-04-10T15:29:06+00:00"
+                    },
+                    "createdBy": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "1"
+                    },
+                    "trashed": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "example": false
+                    },
+                    "userGroupId": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "1"
+                    },
+                    "timezone": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "Europe\/Amsterdam"
+                    }
+                },
+                "type": "object"
+            },
+            "EventList": {
+                "properties": {
+                    "result": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#\/components\/schemas\/Event"
+                        }
+                    },
+                    "_metadata": {
+                        "properties": {
+                            "totalCount": {
+                                "description": "Total number of results matching the query criteria",
+                                "type": "integer"
+                            },
+                            "limit": {
+                                "description": "Currently always `0`",
+                                "type": "integer"
+                            },
+                            "offset": {
+                                "description": "Currently always `0`",
+                                "type": "integer"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "EventType": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "1"
+                    },
+                    "name": {
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "Private"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "example": 1
+                    }
+                },
+                "type": "object"
+            },
+            "EventTypeList": {
+                "properties": {
+                    "result": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#\/components\/schemas\/Event"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "RescheduleEventRequest": {
+                "required": [
+                    "startsAt",
+                    "endsAt",
+                    "timezone"
+                ],
+                "properties": {
+                    "startsAt": {
+                        "description": "ISO format date-time representing the start date and time of the event",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2017-04-01T15:29:06+02:00"
+                    },
+                    "endsAt": {
+                        "description": "ISO format date-time representing the end date and time of the event",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2017-04-01T20:29:06+02:00"
+                    },
+                    "timezone": {
+                        "description": "A valid timezone name from the IANA database. For reference: [list of IANA timezone names](https:\/\/en.wikipedia.org\/wiki\/List_of_tz_database_time_zones)",
+                        "type": "string",
+                        "example": "Europe\/Amsterdam"
+                    }
+                },
+                "type": "object"
+            },
+            "ToggleEventTrashRequest": {
+                "required": [
+                    "trashed"
+                ],
+                "properties": {
+                    "trashed": {
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object"
+            },
+            "InvalidJsonException": {
+                "example": {
+                    "message": "Bad Request",
+                    "description": "Invalid JSON"
+                },
+                "allOf": [
+                    {
+                        "$ref": "#\/components\/schemas\/Exception"
+                    },
+                    {
+                        "properties": {
+                            "description": {
+                                "description": "Additional info about the error",
+                                "type": "string",
+                                "readOnly": true
+                            }
+                        },
+                        "type": "object"
+                    }
+                ]
+            },
+            "ValidationException": {
+                "example": {
+                    "message": "Unprocessable Entity",
+                    "errors": [
+                        "Title is required"
+                    ]
+                },
+                "allOf": [
+                    {
+                        "$ref": "#\/components\/schemas\/Exception"
+                    },
+                    {
+                        "properties": {
+                            "errors": {
+                                "type": "array",
+                                "items": {
+                                    "description": "Validation error message",
+                                    "type": "string"
+                                },
+                                "readOnly": true,
+                                "example": [
+                                    "Title is required"
+                                ]
+                            }
+                        },
+                        "type": "object"
+                    }
+                ]
+            }
+        },
+        "responses": {
+            "AttendeeList": {
+                "description": "Successful response",
+                "content": {
+                    "application\/json": {
+                        "schema": {
+                            "$ref": "#\/components\/schemas\/AttendeeList"
+                        }
+                    }
+                }
+            },
+            "Event": {
+                "description": "Successful response",
+                "content": {
+                    "application\/json": {
+                        "schema": {
+                            "properties": {
+                                "result": {
+                                    "$ref": "#\/components\/schemas\/Event"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "EventList": {
+                "description": "Successful response",
+                "content": {
+                    "application\/json": {
+                        "schema": {
+                            "$ref": "#\/components\/schemas\/EventList"
+                        }
+                    }
+                }
+            },
+            "EventTypesList": {
+                "description": "Successful response",
+                "content": {
+                    "application\/json": {
+                        "schema": {
+                            "$ref": "#\/components\/schemas\/EventTypeList"
+                        }
+                    }
+                }
+            },
+            "MalformedInput": {
+                "description": "Malformed input",
+                "content": {
+                    "application\/json": {
+                        "schema": {
+                            "$ref": "#\/components\/schemas\/InvalidJsonException"
+                        }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Item not found",
+                "content": {
+                    "application\/json": {
+                        "schema": {
+                            "$ref": "#\/components\/schemas\/BadRequestException"
+                        },
+                        "example": {
+                            "message": "Not Found",
+                            "description": "Item does not exist"
+                        }
+                    }
+                }
+            },
+            "ServerError": {
+                "description": "Unexpected error",
+                "content": {
+                    "application\/json": {
+                        "schema": {
+                            "$ref": "#\/components\/schemas\/Exception"
+                        }
+                    }
+                }
+            },
+            "ValidationError": {
+                "description": "Validation error",
+                "content": {
+                    "application\/json": {
+                        "schema": {
+                            "$ref": "#\/components\/schemas\/ValidationException"
+                        }
+                    }
+                }
+            }
+        },
+        "parameters": {
+            "EventListOrder": {
+                "name": "order",
+                "in": "query",
+                "description": "Sets the order of the event list.",
+                "schema": {
+                    "type": "string",
+                    "default": "startdate.asc",
+                    "enum": [
+                        "startdate.asc",
+                        "startdate.desc"
+                    ]
+                }
+            },
+            "PageNumber": {
+                "name": "page",
+                "in": "query",
+                "description": "Selects the page to retrieve on paginated responses. Used in combination with the `pageSize` parameter to paginate over results",
+                "schema": {
+                    "type": "integer",
+                    "default": 1,
+                    "minimum": 1
+                }
+            },
+            "PageSize": {
+                "name": "pageSize",
+                "in": "query",
+                "description": "Limits the number of items returned in a single paginated response. Used in combination with the `page` parameter to paginate over results",
+                "schema": {
+                    "type": "integer",
+                    "default": 25,
+                    "maximum": 100,
+                    "minimum": 1
+                }
+            },
+            "PathEventId": {
+                "name": "id",
+                "in": "path",
+                "description": "ID of the event to interact with",
+                "required": true,
+                "schema": {
+                    "type": "string"
+                }
+            }
+        },
+        "securitySchemes": {
+            "insided_auth": {
+                "type": "oauth2",
+                "flows": {
+                    "clientCredentials": {
+                        "tokenUrl": "\/oauth2\/token",
+                        "scopes": {
+                            "read": "Read access to the API",
+                            "write": "Write access to the API"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "security": [
+        {
+            "insided_auth": [
+                "read"
+            ]
+        }
+    ]
+}

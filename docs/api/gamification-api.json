@@ -1,0 +1,423 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Gamification API",
+        "version": "20260806122454"
+    },
+    "servers": [
+        {
+            "url": "/"
+        }
+    ],
+    "paths": {
+        "/leaderboard": {
+            "get": {
+                "tags": [
+                    "Leaderboard"
+                ],
+                "summary": "All time leaderboard",
+                "description": "Fetches a paginated list of users sorted by ascending order of all time points earned",
+                "operationId": "allTimeLeaderboard",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/ExcludeRoles"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PageNumber"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PageSize"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/LeaderboardUserList"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/leaderboard/weekly": {
+            "get": {
+                "tags": [
+                    "Leaderboard"
+                ],
+                "summary": "This week's leaderboard.",
+                "description": "Fetches a paginated list of users sorted by ascending order of points earned this week. 'This week' is a fixed 7 day time period (Monday-Sunday), rather than a rolling 7 day period. This is reset based on the value of timezone chosen when the point system is configured in the control environment.",
+                "operationId": "weeklyLeaderboard",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/ExcludeRoles"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PageNumber"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PageSize"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/responses/LeaderboardUserList"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/leaderboard/user/{id}": {
+            "get": {
+                "tags": [
+                    "Leaderboard"
+                ],
+                "summary": "User's position on the leaderboard.",
+                "description": "Returns leaderboard user with their position on all time or weekly leaderboards.",
+                "operationId": "userPosition",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/ExcludeRoles"
+                    },
+                    {
+                        "$ref": "#/components/parameters/Period"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "$ref": "#/components/schemas/LeaderboardUserResponse"
+                    },
+                    "404": {
+                        "$ref": "#/components/schemas/UserUnranked"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/points/assign": {
+            "post": {
+                "tags": [
+                    "Points"
+                ],
+                "summary": "Assign points",
+                "description": "Assign points to a single user by UserId",
+                "operationId": "assignPoints",
+                "requestBody": {
+                    "description": "Json with user and points",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "user": {
+                                        "description": "UserId",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "points": {
+                                        "description": "Amount of points to assign",
+                                        "type": "integer",
+                                        "example": 20
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Points has been assigned"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        },
+        "/points": {
+            "get": {
+                "tags": [
+                    "Points"
+                ],
+                "summary": "Get assigned points",
+                "description": "Get points assigned to users in a timeframe",
+                "operationId": "getPointsPerUserBetweenDates",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/UserIds"
+                    },
+                    {
+                        "$ref": "#/components/parameters/FromDate"
+                    },
+                    {
+                        "$ref": "#/components/parameters/TillDate"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of users with total points assigned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/UserPoints"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Request is invalid"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                },
+                "security": [
+                    {
+                        "insided_auth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "UserPoints": {
+                "properties": {
+                    "userId": {
+                        "description": "User ID",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "points": {
+                        "description": "Points earned",
+                        "type": "integer",
+                        "readOnly": true
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "userId": 5,
+                    "points": 100
+                }
+            },
+            "LeaderboardUserResponse": {
+                "properties": {
+                    "userId": {
+                        "description": "User ID",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "points": {
+                        "description": "Points earned",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "name": {
+                        "description": "Username",
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "john-doe"
+                    },
+                    "leaderboardPosition": {
+                        "description": "Users position on the leaderboard",
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "avatar": {
+                        "description": "Avatar of the user",
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "http://example.com/avatar123.jpg"
+                    },
+                    "rank": {
+                        "description": "Rank icon url",
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "http://example.com/rank-icon.jpg"
+                    }
+                },
+                "type": "object",
+                "example": {
+                    "id": 5,
+                    "points": 100,
+                    "name": "AwesomeUser",
+                    "leaderboardPosition": 1,
+                    "avatar": "http://example.com/avatar123.jpg",
+                    "rank": "http://superhero.rank/icon.png"
+                }
+            },
+            "UserUnranked": {
+                "properties": {
+                    "message": {
+                        "description": "",
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "User with given id does not have a rank on the leaderboard"
+                    }
+                },
+                "type": "object"
+            },
+            "Exception": {
+                "properties": {
+                    "message": {
+                        "description": "Generic error message",
+                        "type": "string",
+                        "readOnly": true,
+                        "example": "Internal Server Error"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "responses": {
+            "LeaderboardUserList": {
+                "description": "List of users on the leaderboard",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/LeaderboardUserResponse"
+                            }
+                        }
+                    }
+                }
+            },
+            "Error": {
+                "description": "Unexpected error",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Exception"
+                        }
+                    }
+                }
+            }
+        },
+        "parameters": {
+            "UserIds": {
+                "name": "userId[]",
+                "in": "query",
+                "description": "Ids of users to retrive points for.",
+                "required": true,
+                "style": "form",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "example": 10
+            },
+            "FromDate": {
+                "name": "earnedAt[from]",
+                "in": "query",
+                "description": "Starting value for a timeframe. Uses beginning of unix time as default.",
+                "required": false,
+                "style": "form",
+                "schema": {
+                    "type": "string"
+                },
+                "example": "2020-05-29 13:33:10"
+            },
+            "TillDate": {
+                "name": "earnedAt[to]",
+                "in": "query",
+                "description": "Ending value for a timeframe. Uses current time as a default.",
+                "required": false,
+                "style": "form",
+                "schema": {
+                    "type": "string"
+                },
+                "example": "2020-05-29 13:33:10"
+            },
+            "Period": {
+                "name": "period",
+                "in": "query",
+                "description": "Used to rank using this week leaderboard. Allowed values: weekly, all_time. All time is the default.",
+                "required": false,
+                "schema": {
+                    "type": "string"
+                },
+                "example": "weekly"
+            },
+            "ExcludeRoles": {
+                "name": "excluded[]",
+                "in": "query",
+                "description": "List of user roles to exclude.",
+                "required": false,
+                "style": "form",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "example": "roles.banned&excluded[]=roles.moderator"
+            },
+            "PageNumber": {
+                "name": "page",
+                "in": "query",
+                "description": "Selects the page to retrieve on paginated responses. Used in combination with the `pageSize` parameter to paginate over results",
+                "required": false,
+                "schema": {
+                    "type": "integer",
+                    "default": 1,
+                    "minimum": 1
+                }
+            },
+            "PageSize": {
+                "name": "pageSize",
+                "in": "query",
+                "description": "Limits the number of items returned in a single paginated response. Used in combination with the `page` parameter to paginate over results",
+                "required": false,
+                "schema": {
+                    "type": "integer",
+                    "default": 25,
+                    "maximum": 25,
+                    "minimum": 1
+                }
+            }
+        },
+        "securitySchemes": {
+            "insided_auth": {
+                "type": "oauth2",
+                "flows": {
+                    "clientCredentials": {
+                        "tokenUrl": "/oauth2/token",
+                        "scopes": {
+                            "": "This API does not use scopes"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
