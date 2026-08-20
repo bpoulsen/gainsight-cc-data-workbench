@@ -120,7 +120,7 @@ describe("adapter registry", () => {
     const adapter = getAdapter("user", stubClient);
     expect(adapter.name).toBe("users");
     expect(registeredAdapters()).toContain("users");
-    expect(() => getAdapter("events", stubClient)).toThrow(/not implemented yet/);
+    expect(() => getAdapter("gamification", stubClient)).toThrow(/not implemented yet/);
   });
 });
 

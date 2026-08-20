@@ -38,9 +38,11 @@ export {
   isTaxonomyResourceName,
   normalizeTaxonomyRecord,
 } from "./taxonomy.js";
+export { EventsAdapter, normalizeAttendee, normalizeEvent } from "./events.js";
 
 import { registerAdapter } from "./registry.js";
 import { ContentAdapter, CONTENT_RESOURCES } from "./content.js";
+import { EventsAdapter } from "./events.js";
 import { TaxonomyAdapter, TAXONOMY_RESOURCES } from "./taxonomy.js";
 import { UsersAdapter } from "./users.js";
 
@@ -51,3 +53,4 @@ for (const resource of CONTENT_RESOURCES) {
 for (const resource of TAXONOMY_RESOURCES) {
   registerAdapter(resource, (client) => new TaxonomyAdapter(client, resource));
 }
+registerAdapter("events", (client) => new EventsAdapter(client));
