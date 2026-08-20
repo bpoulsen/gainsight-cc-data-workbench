@@ -13,6 +13,11 @@ import {
   extractPageItems,
   isShortOrEmptyPage,
 } from "./api/pagination.js";
+import {
+  createConcurrencyLimiter,
+  DEFAULT_CONCURRENCY,
+  RetryPolicy,
+} from "./retry.js";
 import type { GainsightConfig } from "./types.js";
 
 export {
@@ -39,11 +44,15 @@ const FAMILY_PREFIX: Record<ApiFamily, string> = {
 export interface ApiClientOptions {
   isDebugEnabled?: () => boolean;
   debug?: (message: string) => void;
+  retry?: RetryPolicy;
+  concurrency?: number;
 }
 
 export interface RequestExtras {
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  operation?: string;
+  retryable?: boolean;
 }
 
 export interface PaginateOptions {
@@ -138,8 +147,10 @@ export function createApiClient(
 ): ApiClient {
   const debugEnabled = options.isDebugEnabled ?? isDebugEnabled;
   const debug = options.debug ?? ((message: string) => console.error(message));
+  const retry = options.retry ?? new RetryPolicy({ log: debug });
+  const limit = createConcurrencyLimiter(options.concurrency ?? DEFAULT_CONCURRENCY);
 
-  async function request<T = unknown>(req: ApiRequestOptions): Promise<ApiResponse<T>> {
+  async function sendOnce<T>(req: ApiRequestOptions): Promise<ApiResponse<T>> {
     const token = auth.tokenManager.getCachedToken()?.accessToken ?? "";
     const secrets = secretsFor(auth.config, [token]);
     if (debugEnabled()) {
@@ -167,6 +178,26 @@ export function createApiClient(
     throw mapHttpError(response.status, req.method, req.path, response.data, response.headers);
   }
 
+  async function request<T = unknown>(req: ApiRequestOptions): Promise<ApiResponse<T>> {
+    const retryContext: {
+      method: string;
+      path: string;
+      operation?: string;
+      retryable?: boolean;
+      signal?: AbortSignal;
+    } = { method: req.method, path: req.path };
+    if (req.operation !== undefined) {
+      retryContext.operation = req.operation;
+    }
+    if (req.retryable !== undefined) {
+      retryContext.retryable = req.retryable;
+    }
+    if (req.signal !== undefined) {
+      retryContext.signal = req.signal;
+    }
+    return retry.execute(() => limit(() => sendOnce<T>(req)), retryContext);
+  }
+
   function call<T>(
     method: string,
     path: string,
@@ -186,6 +217,12 @@ export function createApiClient(
     }
     if (extras.signal !== undefined) {
       req.signal = extras.signal;
+    }
+    if (extras.operation !== undefined) {
+      req.operation = extras.operation;
+    }
+    if (extras.retryable !== undefined) {
+      req.retryable = extras.retryable;
     }
     return request<T>(req);
   }

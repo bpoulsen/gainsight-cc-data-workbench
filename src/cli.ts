@@ -8,6 +8,8 @@ import {
   ProfileError,
 } from "./lib/config/profile.js";
 import { AuthError, getAuthenticatedClient } from "./lib/auth.js";
+import { createApiClient } from "./lib/apiClient.js";
+import { parseConcurrency } from "./lib/retry.js";
 import { isWriteOperation, type CliFlags } from "./lib/types.js";
 
 const HELP = `Gainsight CC Workbench — terminal explorer and CSV bulk tool
@@ -25,6 +27,7 @@ Options:
       --results <path>          Bulk results CSV path (default: {input}.results.csv)
       --dry-run                 Plan writes without calling the API
       --fail-fast               Stop a bulk job on the first row failure
+      --concurrency <n>         Max parallel API requests (default 3, max 20)
       --auth-check              Acquire an OAuth token and report expiry (token is not printed)
   -h, --help                    Show this help
   -v, --version                 Show version
@@ -44,6 +47,7 @@ export function parseCliFlags(argv: string[]): CliFlags {
       results: { type: "string" },
       "dry-run": { type: "boolean", default: false },
       "fail-fast": { type: "boolean", default: false },
+      concurrency: { type: "string" },
       "auth-check": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
       version: { type: "boolean", short: "v", default: false },
@@ -64,6 +68,7 @@ export function parseCliFlags(argv: string[]): CliFlags {
     authCheck: values["auth-check"] === true,
     help: values.help === true,
     version: values.version === true,
+    concurrency: parseConcurrency(values.concurrency),
   };
 }
 
@@ -103,9 +108,10 @@ export async function main(
       io.log(formatProdWriteBanner());
     }
 
-    const client = getAuthenticatedClient(config);
-    await client.tokenManager.getAccessToken();
-    const cached = client.tokenManager.getCachedToken();
+    const auth = getAuthenticatedClient(config);
+    const api = createApiClient(auth, { concurrency: flags.concurrency });
+    await api.auth.tokenManager.getAccessToken();
+    const cached = api.auth.tokenManager.getCachedToken();
     const secondsLeft = cached
       ? Math.max(0, Math.round((cached.expiresAt - Date.now()) / 1000))
       : 0;

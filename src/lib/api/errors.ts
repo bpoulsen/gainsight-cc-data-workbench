@@ -7,6 +7,7 @@ export class ApiError extends Error {
   readonly method: string;
   readonly path: string;
   readonly data: unknown;
+  attempts: number;
 
   constructor(message: string, status: number, method: string, path: string, data: unknown) {
     super(message);
@@ -15,6 +16,7 @@ export class ApiError extends Error {
     this.method = method;
     this.path = path;
     this.data = data;
+    this.attempts = 1;
   }
 }
 

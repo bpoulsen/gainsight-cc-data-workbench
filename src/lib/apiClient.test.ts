@@ -15,7 +15,9 @@ import {
   ServerError,
   usersApi,
   ValidationError,
+  type ApiClientOptions,
 } from "./apiClient.js";
+import { RetryPolicy } from "./retry.js";
 import type { GainsightConfig } from "./types.js";
 import topicList from "./fixtures/topic-list.json" with { type: "json" };
 import userList from "./fixtures/user-list-iterable.json" with { type: "json" };
@@ -51,6 +53,20 @@ function tokenThen(handler: (url: URL, init?: RequestInit) => Response | Promise
       return handler(url, init);
     },
   });
+}
+
+function withFastRetry(options: ApiClientOptions = {}): ApiClientOptions {
+  const { retry, ...rest } = options;
+  return {
+    retry:
+      retry ??
+      new RetryPolicy({
+        sleep: async () => {},
+        random: () => 0.5,
+        log: () => {},
+      }),
+    ...rest,
+  };
 }
 
 async function collected<T>(iter: AsyncIterable<T>): Promise<T[]> {
@@ -113,6 +129,7 @@ describe("createApiClient errors", () => {
             "Retry-After": "2",
           }),
         ),
+        withFastRetry(),
       );
       await expect(client.get("/v2/topics")).rejects.toSatisfy((error: unknown) => {
         expect(error).toBeInstanceOf(testCase.type);
@@ -132,6 +149,7 @@ describe("createApiClient errors", () => {
   it("lets AuthError from a second 401 propagate", async () => {
     const client = createApiClient(
       tokenThen(() => jsonResponse({ message: "unauthorized" }, 401)),
+      withFastRetry(),
     );
     await expect(client.get("/user")).rejects.toBeInstanceOf(AuthError);
   });
@@ -149,6 +167,7 @@ describe("HTTP wrappers", () => {
         expect(url.pathname).toMatch(/\/user|\/v2\/topics/);
         return jsonResponse({ ok: true }, init?.method === "POST" ? 201 : 200);
       }),
+      withFastRetry(),
     );
 
     await client.get("/user");
@@ -166,10 +185,10 @@ describe("HTTP wrappers", () => {
         urls.push(url.pathname);
         return jsonResponse(topicList);
       }),
-      {
+      withFastRetry({
         isDebugEnabled: () => true,
         debug: (message) => logs.push(message),
-      },
+      }),
     );
 
     const topics = await communityApi(client).get("/topics");
@@ -204,6 +223,7 @@ describe("paginate", () => {
         const items = page === 1 ? [{ id: "1" }, { id: "2" }] : [{ id: "3" }];
         return jsonResponse({ result: items });
       }),
+      withFastRetry(),
     );
 
     const items = await collected(
@@ -214,13 +234,17 @@ describe("paginate", () => {
   });
 
   it("stops on an empty page", async () => {
-    const client = createApiClient(tokenThen(() => jsonResponse({ result: [] })));
+    const client = createApiClient(
+      tokenThen(() => jsonResponse({ result: [] })),
+      withFastRetry(),
+    );
     await expect(collected(client.paginate({ path: "/v2/topics" }))).resolves.toEqual([]);
   });
 
   it("surfaces the 10k topic cap as ValidationError", async () => {
     const client = createApiClient(
       tokenThen(() => jsonResponse(validationError, 422)),
+      withFastRetry(),
     );
     await expect(
       collected(communityApi(client).paginate({ path: "/topics" })),
@@ -238,6 +262,7 @@ describe("paginate", () => {
         }
         return jsonResponse({ result: [{ id: String(calls) }, { id: `${calls}b` }] });
       }),
+      withFastRetry(),
     );
 
     await expect(
@@ -255,9 +280,151 @@ describe("paginate", () => {
         iterable = url.searchParams.get("_returnIterable");
         return jsonResponse(userList);
       }),
+      withFastRetry(),
     );
     const users = await collected(usersApi(client).paginate({ path: "/user" }));
     expect(iterable).toBe("true");
     expect(users).toEqual(userList.users);
+  });
+});
+
+describe("retry and concurrency", () => {
+  it("retries GET 429 using Retry-After then succeeds", async () => {
+    const sleeps: number[] = [];
+    const logs: string[] = [];
+    let calls = 0;
+    const client = createApiClient(
+      tokenThen(() => {
+        calls += 1;
+        if (calls < 3) {
+          return jsonResponse({ message: "slow down" }, 429, { "Retry-After": "2" });
+        }
+        return jsonResponse({ ok: true });
+      }),
+      withFastRetry({
+        retry: new RetryPolicy({
+          sleep: async (ms) => {
+            sleeps.push(ms);
+          },
+          random: () => 0.5,
+          log: (message) => logs.push(message),
+        }),
+      }),
+    );
+
+    await expect(client.get("/v2/topics")).resolves.toMatchObject({ status: 200 });
+    expect(calls).toBe(3);
+    expect(sleeps).toEqual([2000, 2000]);
+    expect(logs[0]).toMatch(/Retry GET \/v2\/topics after HTTP 429/);
+  });
+
+  it("uses exponential backoff for 503 without Retry-After", async () => {
+    const sleeps: number[] = [];
+    let calls = 0;
+    const client = createApiClient(
+      tokenThen(() => {
+        calls += 1;
+        if (calls < 3) {
+          return jsonResponse({ message: "unavailable" }, 503);
+        }
+        return jsonResponse({ ok: true });
+      }),
+      withFastRetry({
+        retry: new RetryPolicy({
+          sleep: async (ms) => {
+            sleeps.push(ms);
+          },
+          random: () => 0.5,
+          log: () => {},
+        }),
+      }),
+    );
+
+    await client.get("/user");
+    expect(calls).toBe(3);
+    expect(sleeps).toEqual([1000, 2000]);
+  });
+
+  it("does not retry delete-like operations", async () => {
+    const cases = [
+      { method: "DELETE" as const, path: "/v2/articles/1" },
+      { method: "POST" as const, path: "/v2/articles/1/toggleTrashed" },
+      { method: "POST" as const, path: "/user/7/erase" },
+    ];
+
+    for (const testCase of cases) {
+      let calls = 0;
+      const client = createApiClient(
+        tokenThen(() => {
+          calls += 1;
+          return jsonResponse({ message: "slow down" }, 429, { "Retry-After": "2" });
+        }),
+        withFastRetry(),
+      );
+      await expect(
+        client.request({ method: testCase.method, path: testCase.path }),
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(RateLimitError);
+        expect((error as RateLimitError).attempts).toBe(1);
+        return true;
+      });
+      expect(calls).toBe(1);
+    }
+  });
+
+  it("does not retry when operation is toggleTrashed", async () => {
+    let calls = 0;
+    const client = createApiClient(
+      tokenThen(() => {
+        calls += 1;
+        return jsonResponse({ message: "slow down" }, 429);
+      }),
+      withFastRetry(),
+    );
+    await expect(
+      client.post("/v2/articles/1", undefined, undefined, { operation: "toggleTrashed" }),
+    ).rejects.toBeInstanceOf(RateLimitError);
+    expect(calls).toBe(1);
+  });
+
+  it("records exhausted 429s for the results CSV", async () => {
+    const client = createApiClient(
+      tokenThen(() => jsonResponse({ message: "slow down" }, 429, { "Retry-After": "1" })),
+      withFastRetry(),
+    );
+    const error = await client.get("/v2/topics").then(
+      () => {
+        throw new Error("expected failure");
+      },
+      (caught: unknown) => caught,
+    );
+    expect(error).toBeInstanceOf(RateLimitError);
+    expect((error as RateLimitError).attempts).toBe(3);
+  });
+
+  it("caps concurrent API calls", async () => {
+    let inflight = 0;
+    let maxInflight = 0;
+    const client = createApiClient(
+      tokenThen(async () => {
+        inflight += 1;
+        maxInflight = Math.max(maxInflight, inflight);
+        await new Promise((resolve) => {
+          setTimeout(resolve, 40);
+        });
+        inflight -= 1;
+        return jsonResponse({ ok: true });
+      }),
+      withFastRetry({ concurrency: 2 }),
+    );
+
+    await Promise.all([
+      client.get("/user"),
+      client.get("/user"),
+      client.get("/user"),
+      client.get("/user"),
+      client.get("/user"),
+    ]);
+    expect(maxInflight).toBe(2);
   });
 });

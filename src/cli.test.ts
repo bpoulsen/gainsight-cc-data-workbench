@@ -31,6 +31,15 @@ describe("parseCliFlags", () => {
   it("parses --auth-check", () => {
     expect(parseCliFlags(["--auth-check"]).authCheck).toBe(true);
   });
+
+  it("defaults concurrency to 3 and accepts overrides", () => {
+    expect(parseCliFlags([]).concurrency).toBe(3);
+    expect(parseCliFlags(["--concurrency", "1"]).concurrency).toBe(1);
+  });
+
+  it("rejects invalid --concurrency", () => {
+    expect(() => parseCliFlags(["--concurrency", "0"])).toThrow(/1 to 20/);
+  });
 });
 
 describe("isWriteOperation", () => {

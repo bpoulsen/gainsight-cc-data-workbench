@@ -23,3 +23,9 @@ export {
   searchApi,
   usersApi,
 } from "../apiClient.js";
+export {
+  RetryPolicy,
+  DEFAULT_CONCURRENCY,
+  isDeleteLike,
+  toResultsFields,
+} from "../retry.js";

@@ -184,6 +184,8 @@ export interface ApiRequestOptions {
   body?: unknown;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  operation?: string;
+  retryable?: boolean;
 }
 
 export interface ApiResponse<T = unknown> {

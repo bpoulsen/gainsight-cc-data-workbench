@@ -95,8 +95,8 @@ Every write job writes a results CSV (`{input}.results.csv` unless you pass `--r
 | Trash / permanent delete / user erase | Typed confirmation required before any request                                                                                            |
 | Content delete default                | **Trash** (`toggleTrashed`), not permanent delete                                                                                         |
 | User erase                            | Confirmed separately; it **anonymizes** content created by that user                                                                      |
-| Retries                               | 429 / 5xx retried on non-delete ops only. **Deletes are never auto-retried** — failed rows stay in the results CSV for a manual follow-up |
-| Concurrency                           | Conservative default (planned: 3). Do not hammer the API                                                                                  |
+| Retries                               | 429 / 5xx retried up to **3 attempts** on non-delete ops. Backoff starts at 1s, doubles, caps at 60s, ±20% jitter. `Retry-After` is honored (also capped at 60s). **Deletes / trash / erase are never auto-retried** — failed rows stay in the results CSV for a manual follow-up |
+| Concurrency                           | Default **3** parallel API requests (`--concurrency 1-20`). If you still see 429s, lower concurrency rather than raising it |
 
 ## API constraints operators will hit
 
@@ -115,6 +115,7 @@ src/index.ts                 CLI entry
 src/cli.ts                   Flag parsing and dispatch
 src/lib/config/              Named sandbox/prod profiles
 src/lib/apiClient.ts         Typed HTTP client, pagination, family APIs
+src/lib/retry.ts             429/5xx backoff, delete-no-retry, concurrency limiter
 src/generated/               OpenAPI types (pnpm generate:api)
 src/adapters/                Resource adapters (later tasks)
 src/commands/                explore | export | bulk (later tasks)

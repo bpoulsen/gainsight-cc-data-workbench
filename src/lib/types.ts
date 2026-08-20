@@ -29,6 +29,7 @@ export interface CliFlags {
   authCheck: boolean;
   help: boolean;
   version: boolean;
+  concurrency: number;
 }
 
 export function isProfileName(value: string): value is ProfileName {
