@@ -1,0 +1,29 @@
+{
+  "result": {
+    "community": [
+      {
+        "id": 1,
+        "type": "community",
+        "displayOrder": 0,
+        "title": "General Discussion",
+        "description": "Top-level section",
+        "parentId": null,
+        "isSection": true,
+        "heroImage": null,
+        "thumbnailImage": null,
+        "children": [
+          {
+            "id": 6,
+            "type": "community",
+            "displayOrder": 0,
+            "title": "Getting started",
+            "description": "Onboarding",
+            "parentId": 1,
+            "isSection": false,
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}
