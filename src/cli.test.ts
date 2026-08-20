@@ -45,6 +45,11 @@ describe("parseCliFlags", () => {
     expect(parseCliFlags([]).utf8Bom).toBe(false);
     expect(parseCliFlags(["--utf8-bom"]).utf8Bom).toBe(true);
   });
+
+  it("parses --skip-confirmation", () => {
+    expect(parseCliFlags([]).skipConfirmation).toBe(false);
+    expect(parseCliFlags(["--skip-confirmation"]).skipConfirmation).toBe(true);
+  });
 });
 
 describe("isWriteOperation", () => {

@@ -286,6 +286,8 @@ describe("runWizard", () => {
         profile: "sandbox",
         dryRun: true,
         sawRateLimit: false,
+        rateLimitCount: 0,
+        concurrency: 3,
       };
       return summary;
     });
@@ -325,6 +327,8 @@ describe("runWizard", () => {
         profile: "prod",
         dryRun: false,
         sawRateLimit: false,
+        rateLimitCount: 0,
+        concurrency: 3,
       };
       return summary;
     });
@@ -340,6 +344,44 @@ describe("runWizard", () => {
     expect(code).toBe(0);
     expect(scripted.errors.some((line) => line.includes("PRODUCTION PROFILE"))).toBe(true);
     expect(runBulkJob.mock.calls[0]?.[0]).toMatchObject({ dryRun: false, operation: "erase" });
+  });
+
+  it("skips typed confirmation when --skip-confirmation is set", async () => {
+    const dir = tempWorkspace();
+    const csvPath = join(dir, "erase.csv");
+    writeFileSync(csvPath, "id\n7\n");
+    const adapter = new FakeUsersAdapter(stubClient);
+    const runBulkJob = vi.fn(async () => {
+      const summary: BulkJobSummary = {
+        total: 1,
+        success: 1,
+        failed: 0,
+        skipped: 0,
+        planned: 0,
+        durationMs: 3,
+        resultsPath: join(dir, "erase.results.csv"),
+        operation: "erase",
+        resource: "users",
+        profile: "sandbox",
+        dryRun: false,
+        sawRateLimit: false,
+        rateLimitCount: 0,
+        concurrency: 3,
+      };
+      return summary;
+    });
+    const scripted = createScriptedUi({
+      selects: ["users", "bulk", "erase"],
+      texts: [csvPath],
+      confirms: [false],
+    });
+    const code = await runWizard({
+      ...baseOptions(dir, adapter, scripted.ui, { runBulkJob }),
+      flags: parseCliFlags(["--profile", "sandbox", "--skip-confirmation"]),
+    });
+    expect(code).toBe(0);
+    expect(scripted.warn.some((line) => line.includes("--skip-confirmation"))).toBe(true);
+    expect(runBulkJob).toHaveBeenCalledOnce();
   });
 
   it("rejects a CSV missing required columns before running the job", async () => {

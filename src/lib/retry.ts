@@ -101,6 +101,10 @@ export function isDeleteLike(method: string, path: string, operation?: string): 
   return /(?:^|\/)(erase|toggleTrashed|delete)$/i.test(normalized);
 }
 
+export function suggestedConcurrency(current: number): number {
+  return Math.max(1, Math.floor(current / 2));
+}
+
 export function isRetryableStatus(status: number): boolean {
   return RETRYABLE_STATUSES.has(status);
 }
@@ -129,20 +133,25 @@ export function backoffDelayMs(
 export function toResultsFields(error: unknown): ResultsErrorFields {
   const attempts = error instanceof ApiError ? error.attempts : 1;
   if (error instanceof RateLimitError) {
+    const deletePrefix = isDeleteLike(error.method, error.path)
+      ? `DELETE_FAILED: ${error.status} `
+      : "";
     return {
       status: "failed",
       http_status: 429,
-      error: `HTTP 429 after ${attempts} attempt(s). Do not assume the write succeeded; retry this row manually. ${error.message}`,
+      error: `${deletePrefix}HTTP 429 after ${attempts} attempt(s). Do not assume the write succeeded; retry this row manually. ${error.message}`,
       attempts,
     };
   }
   if (error instanceof ApiError) {
+    const deleteLike = isDeleteLike(error.method, error.path);
+    const followUp = deleteLike
+      ? `${error.message} Deletes are never auto-retried; retry this row manually.`
+      : error.message;
     return {
       status: "failed",
       http_status: error.status,
-      error: isDeleteLike(error.method, error.path)
-        ? `${error.message} Deletes are never auto-retried; retry this row manually.`
-        : error.message,
+      error: deleteLike ? `DELETE_FAILED: ${error.status} ${followUp}` : followUp,
       attempts,
     };
   }

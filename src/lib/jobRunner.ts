@@ -29,9 +29,12 @@ import {
 import {
   createConcurrencyLimiter,
   DEFAULT_CONCURRENCY,
+  isDeleteLike,
+  suggestedConcurrency,
   toResultsFields,
 } from "./retry.js";
 import type { ProfileName } from "./types.js";
+import { logJobExecution } from "./audit.js";
 
 export type JobRowStatus = "success" | "failed" | "skipped" | "planned";
 
@@ -52,6 +55,9 @@ export interface BulkJobOptions {
   onUnknownColumn?: (header: string) => void;
   signal?: AbortSignal;
   identity?: UserIdentityResolver;
+  cwd?: string;
+  auditLogPath?: string;
+  onAuditError?: (error: unknown) => void;
 }
 
 export interface BulkProgress {
@@ -76,6 +82,8 @@ export interface BulkJobSummary {
   profile: ProfileName;
   dryRun: boolean;
   sawRateLimit: boolean;
+  rateLimitCount: number;
+  concurrency: number;
 }
 
 export class JobRunnerError extends Error {
@@ -95,11 +103,19 @@ export function formatJobSummary(summary: BulkJobSummary): string {
     : `${summary.success} success, ${summary.failed} failed, ${summary.skipped} skipped`;
   const lines = [
     `Bulk ${summary.resource}/${summary.operation} (${summary.profile}): ${summary.total} rows, ${outcome}, ${summary.durationMs}ms`,
-    `Results: ${summary.resultsPath}`,
   ];
   if (summary.sawRateLimit) {
-    lines.push("HTTP 429 encountered. Retry failed rows manually and consider --concurrency 1.");
+    const current = summary.concurrency;
+    const suggested = suggestedConcurrency(current);
+    const n = summary.rateLimitCount;
+    lines.push(
+      `Rate limit (429) encountered (${n} request${n === 1 ? "" : "s"}). Consider reducing --concurrency (current: ${current}) to ${suggested}. Retry failed rows manually.`,
+    );
   }
+  if (summary.failed > 0 && isDeleteLike("POST", "", summary.operation)) {
+    lines.push("Failed deletes/erases are never auto-retried. Filter the results CSV for status=failed and DELETE_FAILED, then re-run those rows manually. See README.");
+  }
+  lines.push(`Results: ${summary.resultsPath}`);
   return lines.join("\n");
 }
 
@@ -171,7 +187,7 @@ export class BulkJobRunner {
       : failFastController.signal;
     const limit = createConcurrencyLimiter(concurrency);
     const results: Array<Record<string, unknown>> = new Array(rows.length);
-    const counts = { success: 0, failed: 0, skipped: 0, planned: 0, sawRateLimit: false };
+    const counts = { success: 0, failed: 0, skipped: 0, planned: 0, sawRateLimit: false, rateLimitCount: 0 };
 
     const emitProgress = (processed: number): void => {
       options.onProgress?.({
@@ -202,6 +218,7 @@ export class BulkJobRunner {
             counts.failed += 1;
             if (record.http_status === 429) {
               counts.sawRateLimit = true;
+              counts.rateLimitCount += 1;
             }
             if (failFast && !failFastController.signal.aborted) {
               failFastController.abort();
@@ -236,7 +253,7 @@ export class BulkJobRunner {
       await writer.end();
     }
 
-    return {
+    const summary: BulkJobSummary = {
       total: rows.length,
       success: counts.success,
       failed: counts.failed,
@@ -249,7 +266,34 @@ export class BulkJobRunner {
       profile: options.profile,
       dryRun,
       sawRateLimit: counts.sawRateLimit,
+      rateLimitCount: counts.rateLimitCount,
+      concurrency,
     };
+    await logJobExecution(
+      {
+        timestamp: now().toISOString(),
+        profile: options.profile,
+        operation: options.operation,
+        resource: options.adapter.name,
+        inputFile: options.csvPath,
+        resultsFile: resultsPath,
+        totalRows: summary.total,
+        successCount: summary.success,
+        failedCount: summary.failed,
+        skippedCount: summary.skipped,
+        plannedCount: summary.planned,
+        duration: summary.durationMs,
+        dryRun,
+        sawRateLimit: summary.sawRateLimit,
+        rateLimitCount: summary.rateLimitCount,
+      },
+      {
+        ...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
+        ...(options.auditLogPath !== undefined ? { logPath: options.auditLogPath } : {}),
+        ...(options.onAuditError !== undefined ? { onError: options.onAuditError } : {}),
+      },
+    );
+    return summary;
   }
 
   private async processRow(input: {

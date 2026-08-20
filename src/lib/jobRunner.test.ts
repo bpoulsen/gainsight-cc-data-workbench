@@ -98,6 +98,7 @@ describe("BulkJobRunner", () => {
         adapter: new UsersAdapter(client),
         client,
         profile: "sandbox",
+        cwd: dir,
         dryRun: true,
         now: () => new Date("2026-08-20T18:00:00.000Z"),
         onPlan: (plan) => plans.push(`${plan.method} ${plan.path}`),
@@ -137,6 +138,7 @@ describe("BulkJobRunner", () => {
         adapter: new UsersAdapter(client),
         client,
         profile: "sandbox",
+        cwd: dir,
         concurrency: 1,
       });
       expect(summary.success).toBe(1);
@@ -165,6 +167,7 @@ describe("BulkJobRunner", () => {
         adapter: new UsersAdapter(client),
         client,
         profile: "sandbox",
+        cwd: dir,
         failFast: true,
         concurrency: 1,
       });
@@ -195,6 +198,7 @@ describe("BulkJobRunner", () => {
         adapter: new UsersAdapter(client),
         client,
         profile: "sandbox",
+        cwd: dir,
       });
       expect(summary.success).toBe(1);
       const rows = await readResults(summary.resultsPath);
@@ -220,11 +224,14 @@ describe("BulkJobRunner", () => {
         adapter: new UsersAdapter(client),
         client,
         profile: "sandbox",
+        cwd: dir,
       });
       expect(attempts).toBe(1);
       expect(summary.failed).toBe(1);
       const rows = await readResults(summary.resultsPath);
+      expect(rows[0]?.error).toMatch(/DELETE_FAILED: 500/);
       expect(rows[0]?.error).toMatch(/never auto-retried/i);
+      expect(formatJobSummary(summary)).toMatch(/re-run those rows manually/);
     });
   });
 
@@ -243,10 +250,73 @@ describe("BulkJobRunner", () => {
         adapter: new ContentAdapter(client, "questions"),
         client,
         profile: "sandbox",
+        cwd: dir,
         onUnknownColumn: (header) => unknown.push(header),
       });
       expect(unknown).toEqual(["extra"]);
       expect(summary.success).toBe(1);
+    });
+  });
+
+  it("appends a PII-free audit line after the job", async () => {
+    await withTemp(async (dir) => {
+      const csvPath = join(dir, "users.csv");
+      await writeFile(csvPath, "email,field,value\nops@example.com,username,ops\n");
+      const client = mockClient((url) => {
+        if (url.pathname.includes("/user/email/")) {
+          return jsonResponse({ result: { userid: 7 } });
+        }
+        return jsonResponse({ ok: true }, 200);
+      });
+      const summary = await new BulkJobRunner().run({
+        csvPath,
+        operation: "updateField",
+        adapter: new UsersAdapter(client),
+        client,
+        profile: "sandbox",
+        cwd: dir,
+      });
+      const audit = await readFile(join(dir, "logs/jobs.jsonl"), "utf8");
+      const entry = JSON.parse(audit.trim()) as Record<string, unknown>;
+      expect(entry).toMatchObject({
+        profile: "sandbox",
+        operation: "updateField",
+        resource: "users",
+        inputFile: csvPath,
+        resultsFile: summary.resultsPath,
+        totalRows: 1,
+        successCount: 1,
+        failedCount: 0,
+        dryRun: false,
+      });
+      expect(audit).not.toContain("ops@example.com");
+    });
+  });
+
+  it("counts 429s and suggests lower concurrency", async () => {
+    await withTemp(async (dir) => {
+      const csvPath = join(dir, "users.csv");
+      await writeFile(csvPath, "id,field,value\n7,username,ops\n");
+      const client = mockClient((url) => {
+        if (url.pathname.includes("/user/7/")) {
+          return jsonResponse({ message: "slow down" }, 429);
+        }
+        return jsonResponse({ ok: true }, 200);
+      });
+      const summary = await new BulkJobRunner().run({
+        csvPath,
+        operation: "updateField",
+        adapter: new UsersAdapter(client),
+        client,
+        profile: "sandbox",
+        cwd: dir,
+        concurrency: 4,
+      });
+      expect(summary.sawRateLimit).toBe(true);
+      expect(summary.rateLimitCount).toBe(1);
+      expect(summary.concurrency).toBe(4);
+      expect(formatJobSummary(summary)).toMatch(/current: 4/);
+      expect(formatJobSummary(summary)).toMatch(/to 2/);
     });
   });
 
@@ -264,8 +334,11 @@ describe("BulkJobRunner", () => {
       profile: "sandbox",
       dryRun: false,
       sawRateLimit: true,
+      rateLimitCount: 1,
+      concurrency: 3,
     });
     expect(text).toMatch(/1 success, 1 failed/);
-    expect(text).toMatch(/--concurrency 1/);
+    expect(text).toMatch(/current: 3/);
+    expect(text).toMatch(/to 1/);
   });
 });

@@ -25,6 +25,8 @@ export interface BulkCommandOptions {
   onPlan?: (plan: ApiCallPlan, line: number) => void;
   onUnknownColumn?: (header: string) => void;
   signal?: AbortSignal;
+  cwd?: string;
+  auditLogPath?: string;
 }
 
 export async function runBulkJob(options: BulkCommandOptions): Promise<BulkJobSummary> {
@@ -56,6 +58,12 @@ export async function runBulkJob(options: BulkCommandOptions): Promise<BulkJobSu
   }
   if (options.signal) {
     job.signal = options.signal;
+  }
+  if (options.cwd !== undefined) {
+    job.cwd = options.cwd;
+  }
+  if (options.auditLogPath !== undefined) {
+    job.auditLogPath = options.auditLogPath;
   }
   return runner.run(job);
 }

@@ -17,6 +17,11 @@ import { exportResource, TOPIC_CAP_HINT } from "./commands/export.js";
 import { formatJobSummary, runBulkJob } from "./commands/bulk.js";
 import { runWizard, shouldLaunchWizard, WizardCancelled } from "./commands/wizard.js";
 import { redactSecrets } from "./lib/auth.js";
+import { countCsvRows } from "./lib/csv.js";
+import {
+  confirmDestructiveOperation,
+  operationRequiresTypedConfirmation,
+} from "./lib/safety.js";
 
 const HELP = `Gainsight CC Workbench — terminal explorer and CSV bulk tool
 
@@ -37,11 +42,13 @@ Options:
       --fail-fast               Stop a bulk job on the first row failure
       --concurrency <n>         Max parallel API requests (default 3, max 20)
       --utf8-bom                Prefix export CSV with a UTF-8 BOM (Excel)
+      --skip-confirmation       Skip typed confirmation (DANGEROUS — automated scripts only)
       --auth-check              Acquire an OAuth token and report expiry (token is not printed)
   -h, --help                    Show this help
   -v, --version                 Show version
 
 Copy .env.sandbox.example to .env.sandbox and fill in OAuth client credentials.
+Trash / erase / permanent delete require typing the resource name or DELETE unless you pass --skip-confirmation.
 `;
 
 export function parseCliFlags(argv: string[]): CliFlags {
@@ -58,6 +65,7 @@ export function parseCliFlags(argv: string[]): CliFlags {
       "fail-fast": { type: "boolean", default: false },
       concurrency: { type: "string" },
       "utf8-bom": { type: "boolean", default: false },
+      "skip-confirmation": { type: "boolean", default: false },
       "auth-check": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
       version: { type: "boolean", short: "v", default: false },
@@ -80,6 +88,7 @@ export function parseCliFlags(argv: string[]): CliFlags {
     version: values.version === true,
     concurrency: parseConcurrency(values.concurrency),
     utf8Bom: values["utf8-bom"] === true,
+    skipConfirmation: values["skip-confirmation"] === true,
   };
 }
 
@@ -118,10 +127,6 @@ export async function main(
     const config = loadResolvedProfile(flags.profile, cwd);
     io.log(`Profile: ${config.profile}`);
     io.log(`API host: ${config.baseUrl}`);
-
-    if (config.profile === "prod" && isWriteOperation(flags.op)) {
-      io.log(formatProdWriteBanner());
-    }
 
     const auth = getAuthenticatedClient(config);
     const api = createApiClient(auth, { concurrency: flags.concurrency });
@@ -176,8 +181,36 @@ export async function main(
         return 1;
       }
       const adapter = getAdapter(flags.resource, api);
+      const spec = adapter.operations().find((item) => item.name === flags.op);
+      const rowCount = await countCsvRows(flags.csv);
       const unknown = new Set<string>();
       const secrets = [config.clientId, config.clientSecret];
+
+      if (config.profile === "prod" && isWriteOperation(flags.op)) {
+        io.log(
+          formatProdWriteBanner({
+            resource: adapter.name,
+            operation: flags.op,
+            rowCount,
+            timestamp: new Date().toISOString(),
+          }),
+        );
+      }
+
+      if (operationRequiresTypedConfirmation(spec) && !flags.dryRun) {
+        const confirmed = await confirmDestructiveOperation({
+          operation: flags.op,
+          resource: adapter.name,
+          rowCount,
+          skipConfirmation: flags.skipConfirmation,
+          log: io.log,
+        });
+        if (!confirmed) {
+          io.error("Operation cancelled by operator");
+          return 1;
+        }
+      }
+
       io.log(
         `${flags.dryRun ? "Dry-run" : "Running"} ${adapter.name}/${flags.op} from ${flags.csv}`,
       );
@@ -190,6 +223,7 @@ export async function main(
         dryRun: flags.dryRun,
         failFast: flags.failFast,
         concurrency: flags.concurrency,
+        cwd,
         ...(flags.results !== undefined ? { resultsPath: flags.results } : {}),
         ...(flags.utf8Bom === true ? { utf8Bom: true } : {}),
         onProgress: (progress) => {

@@ -4,6 +4,9 @@
 import type { FilterPrompt, IdentityMode, OperationKind, ResourceOperation } from "../adapters/base.js";
 import type { QueryPrimitive, QueryParams } from "../lib/auth.js";
 import type { CliFlags } from "../lib/types.js";
+import { isTypedConfirmation } from "../lib/safety.js";
+
+export { isTypedConfirmation };
 
 const IDENTITY_COLUMNS = new Set(["id", "userid", "email"]);
 const PREFERRED_PREVIEW_COLUMNS = [
@@ -53,11 +56,6 @@ export function shouldLaunchWizard(flags: CliFlags): boolean {
 export function defaultExportPath(resource: string, now: Date = new Date()): string {
   const stamp = now.toISOString().slice(0, 19).replace(/[:T]/g, "-");
   return `exports/${resource}-export-${stamp}.csv`;
-}
-
-export function isTypedConfirmation(value: string, resource: string): boolean {
-  const trimmed = value.trim();
-  return trimmed === "DELETE" || trimmed === resource;
 }
 
 export function operationNeedsIdentity(kind: OperationKind, name: string): boolean {

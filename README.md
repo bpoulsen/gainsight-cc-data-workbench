@@ -41,6 +41,7 @@ pnpm gs --profile prod
 # Scripted (every wizard path will have flags)
 pnpm gs --profile sandbox --resource users --op export --out users.csv
 pnpm gs --profile prod --resource questions --op editTags --csv tags.csv --dry-run
+pnpm gs --profile sandbox --resource users --op erase --csv erase.csv
 ```
 
 Use the Postman collection in `docs/api/` if you need to call the API before a given command is implemented.
@@ -95,13 +96,55 @@ Every write job writes a results CSV (`{input}.results.csv` unless you pass `--r
 | Rule                                  | Behavior                                                                                                                                  |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | Dry-run                               | Optional (`--dry-run`). Resolves IDs, validates columns, prints planned calls. No writes.                                                 |
-| Trash / permanent delete / user erase | Typed confirmation required before any request                                                                                            |
+| Trash / permanent delete / user erase | Typed confirmation required before any live request. Type the resource name (`users`, `questions`, …) or `DELETE`.                        |
+| `--skip-confirmation`                 | Bypasses typed confirmation. **DANGEROUS** — use only in automated scripts.                                                               |
 | Content delete default                | **Trash** (`toggleTrashed`), not permanent delete                                                                                         |
 | User erase                            | Confirmed separately; it **anonymizes** content created by that user                                                                      |
+| Prod banner                           | `--profile prod` write jobs print profile, operation, row count, and timestamp before running                                             |
+| Audit log                             | Each bulk job appends one JSON line to `logs/jobs.jsonl` (job metadata only; no emails, names, or tokens)                                 |
 | Retries                               | 429 / 5xx retried up to **3 attempts** on non-delete ops. Backoff starts at 1s, doubles, caps at 60s, ±20% jitter. `Retry-After` is honored (also capped at 60s). **Deletes / trash / erase are never auto-retried** — failed rows stay in the results CSV for a manual follow-up |
-| Concurrency                           | Default **3** parallel API requests (`--concurrency 1-20`). If you still see 429s, lower concurrency rather than raising it |
+| Concurrency                           | Default **3** parallel API requests (`--concurrency 1-20`). If you still see 429s, the summary suggests halving concurrency.              |
 
-## API constraints operators will hit
+### Dry-run
+
+```bash
+pnpm gs --profile sandbox --resource users --op erase --csv erase.csv --dry-run
+```
+
+Dry-run resolves identities and writes a results CSV with `status=planned`. It does not call write endpoints and does not prompt for typed confirmation.
+
+### Typed confirmation
+
+Live `erase`, `toggleTrashed`, and `permanentDelete` jobs prompt:
+
+`This will erase 12 users records. Type "users" or "DELETE" to confirm:`
+
+Matching is case-sensitive. A mismatch exits with `Operation cancelled by operator`. Pass `--skip-confirmation` only for unattended scripts.
+
+### Audit log
+
+`logs/jobs.jsonl` is created on first bulk job. Each line is:
+
+`{timestamp, profile, operation, resource, inputFile, resultsFile, totalRows, successCount, failedCount, skippedCount, plannedCount, duration, dryRun, sawRateLimit, rateLimitCount}`
+
+Only numeric `resolved_id` values appear in the results CSV. The audit file does not record emails or names.
+
+### Manual delete follow-up
+
+Deletes are never auto-retried (a 429/5xx might have already applied). Failed rows use `status=failed` and an `error` that starts with `DELETE_FAILED:`.
+
+1. Open `{input}.results.csv`.
+2. Keep rows where `status` is `failed` and `error` contains `DELETE_FAILED`.
+3. Copy the original identity columns (`id` / `email`) into a new CSV.
+4. Re-run that CSV as a **new** job after checking the community so you do not double-delete. Contact Gainsight support if the API state is unclear.
+
+### Rate limits
+
+If any row hits HTTP 429, the job summary reports how many requests were limited and suggests `--concurrency` halved from the current value (never below 1). Start at the default 3; drop to 2 or 1 if 429s continue.
+
+```bash
+pnpm gs --profile sandbox --resource users --op updateField --csv users.csv --concurrency 1
+```
 
 1. **No generic CRUD.** Pick the action (`editTitle` vs `editTags` vs `toggleClosed`).
 2. **10,000-topic cap** on unified list (`GET /v2/topics`). Broader exports need narrower filters or sharding by category/date.
@@ -119,6 +162,8 @@ src/cli.ts                   Flag parsing and dispatch
 src/lib/config/              Named sandbox/prod profiles
 src/lib/apiClient.ts         Typed HTTP client, pagination, family APIs
 src/lib/retry.ts             429/5xx backoff, delete-no-retry, concurrency limiter
+src/lib/safety.ts            Typed confirmation for trash/erase/permanent delete
+src/lib/audit.ts             Append-only logs/jobs.jsonl
 src/lib/csv.ts               Streaming CSV reader/writer, column mapping, flatten
 src/lib/identityResolver.ts  User id/email resolution with per-job cache
 src/generated/               OpenAPI types (pnpm generate:api)

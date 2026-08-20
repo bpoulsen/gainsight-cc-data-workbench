@@ -130,4 +130,16 @@ describe("formatProdWriteBanner", () => {
     expect(formatProdWriteBanner()).toMatch(/PRODUCTION PROFILE/);
     expect(formatProdWriteBanner()).toMatch(/live community/);
   });
+
+  it("includes operation, row count, and timestamp when provided", () => {
+    const banner = formatProdWriteBanner({
+      resource: "users",
+      operation: "erase",
+      rowCount: 12,
+      timestamp: "2026-08-20T18:00:00.000Z",
+    });
+    expect(banner).toMatch(/users\/erase/);
+    expect(banner).toMatch(/Rows: 12/);
+    expect(banner).toMatch(/2026-08-20T18:00:00.000Z/);
+  });
 });

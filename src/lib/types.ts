@@ -31,6 +31,7 @@ export interface CliFlags {
   version: boolean;
   concurrency: number;
   utf8Bom: boolean;
+  skipConfirmation: boolean;
 }
 
 export function isProfileName(value: string): value is ProfileName {

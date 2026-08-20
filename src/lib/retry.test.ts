@@ -6,6 +6,7 @@ import {
   isDeleteLike,
   parseConcurrency,
   RetryPolicy,
+  suggestedConcurrency,
   toResultsFields,
 } from "./retry.js";
 
@@ -23,6 +24,14 @@ describe("parseConcurrency", () => {
     expect(() => parseConcurrency("0")).toThrow(/1 to 20/);
     expect(() => parseConcurrency("21")).toThrow(/1 to 20/);
     expect(() => parseConcurrency("fast")).toThrow(/integer/);
+  });
+});
+
+describe("suggestedConcurrency", () => {
+  it("halves the current limit and never goes below 1", () => {
+    expect(suggestedConcurrency(4)).toBe(2);
+    expect(suggestedConcurrency(3)).toBe(1);
+    expect(suggestedConcurrency(1)).toBe(1);
   });
 });
 
@@ -109,5 +118,11 @@ describe("toResultsFields", () => {
     expect(fields.http_status).toBe(429);
     expect(fields.attempts).toBe(3);
     expect(fields.error).toMatch(/retry this row manually/i);
+  });
+
+  it("prefixes delete-like failures with DELETE_FAILED", () => {
+    const error = new ServerError("busy", 500, "DELETE", "/user/7/erase", {});
+    expect(toResultsFields(error).error).toMatch(/^DELETE_FAILED: 500 /);
+    expect(toResultsFields(error).error).toMatch(/never auto-retried/i);
   });
 });

@@ -104,11 +104,26 @@ export function loadResolvedProfile(
   return loadProfile(profile, cwd);
 }
 
-export function formatProdWriteBanner(): string {
-  return [
+export function formatProdWriteBanner(details?: {
+  resource?: string;
+  operation?: string;
+  rowCount?: number;
+  timestamp?: string;
+}): string {
+  const lines = [
     "========================================",
     "  PRODUCTION PROFILE",
     "  Writes will hit the live community.",
-    "========================================",
-  ].join("\n");
+  ];
+  if (details?.resource !== undefined && details.operation !== undefined) {
+    lines.push(`  ${details.resource}/${details.operation}`);
+  }
+  if (details?.rowCount !== undefined) {
+    lines.push(`  Rows: ${details.rowCount}`);
+  }
+  if (details?.timestamp !== undefined) {
+    lines.push(`  ${details.timestamp}`);
+  }
+  lines.push("========================================");
+  return lines.join("\n");
 }

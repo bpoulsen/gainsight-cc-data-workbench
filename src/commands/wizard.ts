@@ -21,13 +21,17 @@ import {
   resolveProfile,
 } from "../lib/config/profile.js";
 import { countCsvRows, peekCsvHeaders } from "../lib/csv.js";
+import {
+  confirmDestructiveOperation,
+  isTypedConfirmation,
+  operationRequiresTypedConfirmation,
+} from "../lib/safety.js";
 import type { CliFlags, GainsightConfig, ProfileName } from "../lib/types.js";
 import {
   applyParsedFilter,
   defaultExportPath,
   EXPLORE_PAGE_SIZE,
   formatPreviewTable,
-  isTypedConfirmation,
   missingRequiredColumns,
   parseFilterInput,
   previewColumns,
@@ -367,23 +371,40 @@ async function bulkMode(
     initialValue: true,
   });
 
-  if (!dryRun && spec.confirmation === "typed") {
-    const typed = await ui.text({
-      message: `Type "${adapter.name}" or DELETE to confirm ${spec.name}`,
-      validate: (value) =>
-        isTypedConfirmation(value, adapter.name)
-          ? undefined
-          : `Type "${adapter.name}" or DELETE`,
-    });
-    if (!isTypedConfirmation(typed, adapter.name)) {
-      throw new WizardError("Typed confirmation did not match.");
-    }
-  }
-
   const rowCount = await countCsvRows(csvPath);
   if (config.profile === "prod") {
-    ui.error(formatProdWriteBanner());
-    ui.warn(`${config.profile} · ${adapter.name}/${spec.name} · ${rowCount} row(s)${dryRun ? " · dry-run" : ""}`);
+    ui.error(
+      formatProdWriteBanner({
+        resource: adapter.name,
+        operation: spec.name,
+        rowCount,
+        timestamp: new Date().toISOString(),
+      }),
+    );
+    ui.warn(
+      `${config.profile} · ${adapter.name}/${spec.name} · ${rowCount} row(s)${dryRun ? " · dry-run" : ""}`,
+    );
+  }
+
+  if (operationRequiresTypedConfirmation(spec) && !dryRun) {
+    const confirmed = await confirmDestructiveOperation({
+      operation: spec.name,
+      resource: adapter.name,
+      rowCount,
+      skipConfirmation: options.flags.skipConfirmation,
+      log: ui.warn,
+      prompt: async (question) =>
+        ui.text({
+          message: question.trim(),
+          validate: (value) =>
+            isTypedConfirmation(value, adapter.name)
+              ? undefined
+              : `Type "${adapter.name}" or DELETE`,
+        }),
+    });
+    if (!confirmed) {
+      throw new WizardError("Operation cancelled by operator");
+    }
   }
 
   const runner = options.runBulkJob ?? runBulkJob;
@@ -405,6 +426,7 @@ async function bulkMode(
         dryRun,
         failFast: options.flags.failFast,
         concurrency: options.flags.concurrency,
+        cwd: options.cwd,
         signal,
         onProgress: (progress) => {
           spin.message(
