@@ -32,6 +32,10 @@ export interface CliFlags {
   concurrency: number;
   utf8Bom: boolean;
   skipConfirmation: boolean;
+  shardBy?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  shardSeparate: boolean;
 }
 
 export function isProfileName(value: string): value is ProfileName {

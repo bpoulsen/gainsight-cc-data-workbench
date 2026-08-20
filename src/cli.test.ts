@@ -50,6 +50,22 @@ describe("parseCliFlags", () => {
     expect(parseCliFlags([]).skipConfirmation).toBe(false);
     expect(parseCliFlags(["--skip-confirmation"]).skipConfirmation).toBe(true);
   });
+
+  it("parses topic shard flags", () => {
+    const flags = parseCliFlags([
+      "--shard-by",
+      "date",
+      "--created-from",
+      "2026-01-01",
+      "--created-to",
+      "2026-03-31",
+      "--shard-separate",
+    ]);
+    expect(flags.shardBy).toBe("date");
+    expect(flags.createdFrom).toBe("2026-01-01");
+    expect(flags.createdTo).toBe("2026-03-31");
+    expect(flags.shardSeparate).toBe(true);
+  });
 });
 
 describe("isWriteOperation", () => {

@@ -63,8 +63,9 @@ pnpm gs
 pnpm gs --profile sandbox
 pnpm gs --profile prod
 
-# Scripted export (unfiltered list — use the wizard to apply filters)
+# Scripted export (unfiltered list — use the wizard to apply filters, or --shard-by for topics)
 pnpm gs --profile sandbox --resource users --op export --out users.csv
+pnpm gs --profile sandbox --resource topics --op export --out topics.csv --shard-by contentType
 
 # Scripted bulk (dry-run first)
 pnpm gs --profile prod --resource questions --op editTags --csv tags.csv --dry-run
@@ -113,6 +114,9 @@ Do not log or print client secrets or access tokens.
 | `--concurrency <n>` | Parallel API requests (default **3**, max **20**) |
 | `--utf8-bom` | Prefix export/results CSV with a UTF-8 BOM (Excel) |
 | `--skip-confirmation` | Skip typed confirmation (**dangerous** — scripts only) |
+| `--shard-by category\|date\|contentType` | Split a topic export under the 10k cap |
+| `--created-from` / `--created-to` | Date-shard window (`YYYY-MM-DD`) |
+| `--shard-separate` | One CSV per shard instead of merging |
 | `--auth-check` | Acquire a token and report expiry (token is not printed) |
 | `-h`, `--help` / `-v`, `--version` | Help / version |
 
@@ -206,7 +210,7 @@ Official API docs: [https://api2-eu-west-1.insided.com/docs/community/](https://
 | ------- | ----------- |
 | HTTP 401 / missing scope | Confirm `.env.{profile}` credentials and that the token request includes `scope=read write`. Run `pnpm gs --auth-check`. |
 | HTTP 429 | Drop `--concurrency` (3 → 2 → 1). Failed delete rows are **not** auto-retried; follow the results CSV. |
-| Topic export stops at 10,000 / HTTP 422 | Narrow filters or shard by category/date. See [filter sharding](docs/FILTER_SHARDING.md). |
+| Topic export stops at 10,000 / HTTP 422 | Wizard auto-shard, or `--shard-by=category\|date\|contentType`. See [filter sharding](docs/FILTER_SHARDING.md). |
 | HTTP 422 on writes | Check required CSV columns in [operations](docs/OPERATIONS.md). Empty cells are omitted. |
 | `Operation cancelled by operator` | Typed confirm is case-sensitive (`users` or `DELETE`, not `Users`). |
 | Explore from flags | `--op explore` is interactive. Run `pnpm gs` or use `--op export`. |
@@ -226,6 +230,7 @@ src/lib/safety.ts            Typed confirmation for trash/erase/permanent delete
 src/lib/audit.ts             Append-only logs/jobs.jsonl
 src/lib/csv.ts               Streaming CSV reader/writer, column mapping, flatten
 src/lib/identityResolver.ts  User id/email resolution with per-job cache
+src/lib/filterSharding.ts    Topic 10k-cap shard plans (category / date / type)
 src/generated/               OpenAPI types (pnpm generate:api)
 src/adapters/                Resource adapters
 src/commands/                export, bulk, and interactive wizard

@@ -11,6 +11,13 @@ import type { IResourceAdapter, ResourceName } from "../adapters/base.js";
 import { TOPIC_CAP_HINT } from "../adapters/content.js";
 import { formatJobSummary, runBulkJob } from "./bulk.js";
 import { exportResource } from "./export.js";
+import { exportSharded, formatShardedSummary } from "./shardedExport.js";
+import {
+  availableShardStrategies,
+  defaultDateWindow,
+  type CategoryRef,
+  type ShardBy,
+} from "../lib/filterSharding.js";
 import { getAuthenticatedClient, redactSecrets } from "../lib/auth.js";
 import type { QueryParams } from "../lib/auth.js";
 import { createApiClient, type ApiClient } from "../lib/apiClient.js";
@@ -62,6 +69,7 @@ export interface RunWizardOptions {
   listResources?: () => ResourceName[];
   exportResource?: typeof exportResource;
   runBulkJob?: typeof runBulkJob;
+  listCategories?: (signal?: AbortSignal) => Promise<CategoryRef[]>;
 }
 
 export async function runWizard(options: RunWizardOptions): Promise<number> {
@@ -124,10 +132,10 @@ async function runWizardInner(options: RunWizardOptions, ui: WizardUi): Promise<
   });
 
   if (mode === "explore") {
-    return exploreMode(options, ui, adapter);
+    return exploreMode(options, ui, adapter, session.client);
   }
   if (mode === "export") {
-    return exportMode(options, ui, adapter);
+    return exportMode(options, ui, adapter, session.client);
   }
   return bulkMode(options, ui, adapter, config, session.client);
 }
@@ -191,6 +199,7 @@ async function exploreMode(
   options: RunWizardOptions,
   ui: WizardUi,
   adapter: IResourceAdapter,
+  client: ApiClient,
 ): Promise<number> {
   const filters = await collectFilters(adapter, ui);
   const columns = previewColumns(adapter.exportColumnNames());
@@ -225,6 +234,15 @@ async function exploreMode(
 
     if (hitCap) {
       ui.warn(TOPIC_CAP_HINT);
+      if (availableShardStrategies(adapter.name).length > 0) {
+        const auto = await ui.confirm({
+          message: "Auto-shard an export into smaller queries?",
+          initialValue: true,
+        });
+        if (auto) {
+          return runShardedWizardExport(options, ui, adapter, client, filters);
+        }
+      }
       break;
     }
     if (result.exhausted || result.records.length === 0) {
@@ -246,7 +264,7 @@ async function exploreMode(
     initialValue: false,
   });
   if (save) {
-    const code = await runExport(options, ui, adapter, filters);
+    const code = await runExport(options, ui, adapter, client, filters);
     if (code !== 0) {
       return code;
     }
@@ -260,9 +278,10 @@ async function exportMode(
   options: RunWizardOptions,
   ui: WizardUi,
   adapter: IResourceAdapter,
+  client: ApiClient,
 ): Promise<number> {
   const filters = await collectFilters(adapter, ui);
-  const code = await runExport(options, ui, adapter, filters);
+  const code = await runExport(options, ui, adapter, client, filters);
   if (code !== 0) {
     return code;
   }
@@ -274,6 +293,7 @@ async function runExport(
   options: RunWizardOptions,
   ui: WizardUi,
   adapter: IResourceAdapter,
+  client: ApiClient,
   filters: QueryParams,
 ): Promise<number> {
   const suggested = defaultExportPath(adapter.name);
@@ -307,10 +327,128 @@ async function runExport(
     ui.success(`Exported ${result.rowCount} rows (${result.pageCount} pages) to ${result.outPath}`);
     if (result.hitCap) {
       ui.warn(TOPIC_CAP_HINT);
+      if (availableShardStrategies(adapter.name).length > 0) {
+        const auto = await ui.confirm({
+          message: "Re-export using auto-sharding?",
+          initialValue: true,
+        });
+        if (auto) {
+          return runShardedWizardExport(options, ui, adapter, client, filters, outPath);
+        }
+      }
     }
     return 0;
   } catch (error) {
     spin.stop("Export failed");
+    throw error;
+  }
+}
+
+async function runShardedWizardExport(
+  options: RunWizardOptions,
+  ui: WizardUi,
+  adapter: IResourceAdapter,
+  client: ApiClient,
+  filters: QueryParams,
+  existingOutPath?: string,
+): Promise<number> {
+  const strategies = availableShardStrategies(adapter.name);
+  const strategy = await ui.select<ShardBy>({
+    message: "Shard by?",
+    options: strategies.map((value) => ({
+      value,
+      label:
+        value === "contentType"
+          ? "Content type"
+          : value === "category"
+            ? "Category"
+            : "Created month",
+    })),
+  });
+
+  let createdFrom = typeof filters["createdAt[from]"] === "string" ? String(filters["createdAt[from]"]) : undefined;
+  let createdTo = typeof filters["createdAt[to]"] === "string" ? String(filters["createdAt[to]"]) : undefined;
+  if (strategy === "date" && (createdFrom === undefined || createdTo === undefined)) {
+    const window = defaultDateWindow();
+    createdFrom = (await ui.text({
+      message: "Created from (YYYY-MM-DD)",
+      placeholder: window.from,
+      defaultValue: window.from,
+      initialValue: window.from,
+    })).trim();
+    createdTo = (await ui.text({
+      message: "Created to (YYYY-MM-DD)",
+      placeholder: window.to,
+      defaultValue: window.to,
+      initialValue: window.to,
+    })).trim();
+  }
+
+  const layout = await ui.select<"merge" | "separate">({
+    message: "Output layout?",
+    options: [
+      { value: "merge", label: "One merged CSV" },
+      { value: "separate", label: "One CSV per shard" },
+    ],
+  });
+
+  let outPath = existingOutPath;
+  if (outPath === undefined) {
+    const suggested = defaultExportPath(adapter.name);
+    const rawPath = await ui.text({
+      message: "Output CSV path",
+      placeholder: suggested,
+      defaultValue: suggested,
+      initialValue: suggested,
+    });
+    const trimmed = rawPath.trim();
+    outPath = resolve(options.cwd, trimmed.length > 0 ? trimmed : suggested);
+  }
+
+  const spin = ui.spinner();
+  spin.start(`Sharded export (${strategy})…`);
+  try {
+    const shardOpts: Parameters<typeof exportSharded>[0] = {
+      adapter,
+      client,
+      strategy,
+      baseFilters: filters,
+      outPath,
+      separateFiles: layout === "separate",
+      onShard: (index, total, shard, outcome) => {
+        const status = outcome.error !== undefined ? "failed" : `${outcome.rowCount} rows`;
+        spin.message(`Shard ${index}/${total} ${shard.id}: ${status}`);
+      },
+    };
+    if (options.flags.utf8Bom === true) {
+      shardOpts.utf8Bom = true;
+    }
+    if (createdFrom !== undefined) {
+      shardOpts.createdFrom = createdFrom;
+    }
+    if (createdTo !== undefined) {
+      shardOpts.createdTo = createdTo;
+    }
+    if (options.exportResource !== undefined) {
+      shardOpts.exportResource = options.exportResource;
+    }
+    if (options.listCategories !== undefined) {
+      shardOpts.listCategories = options.listCategories;
+    }
+    const result = await withInterrupt((signal) => {
+      shardOpts.signal = signal;
+      return exportSharded(shardOpts);
+    });
+    spin.stop(`Sharded export finished (${result.totalRows} rows)`);
+    ui.info(formatShardedSummary(result));
+    ui.outro(
+      result.failed > 0
+        ? `Finished with ${result.failed} failed shard(s).`
+        : `Results: ${result.outPath}`,
+    );
+    return result.failed > 0 ? 1 : 0;
+  } catch (error) {
+    spin.stop("Sharded export failed");
     throw error;
   }
 }

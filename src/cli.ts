@@ -13,7 +13,9 @@ import { parseConcurrency } from "./lib/retry.js";
 import { isWriteOperation, type CliFlags } from "./lib/types.js";
 import { getAdapter } from "./adapters/index.js";
 import { AdapterError } from "./adapters/base.js";
+import { FilterShardError, parseShardBy } from "./lib/filterSharding.js";
 import { exportResource, TOPIC_CAP_HINT } from "./commands/export.js";
+import { exportSharded, formatShardedSummary } from "./commands/shardedExport.js";
 import { formatJobSummary, runBulkJob } from "./commands/bulk.js";
 import { runWizard, shouldLaunchWizard, WizardCancelled } from "./commands/wizard.js";
 import { redactSecrets } from "./lib/auth.js";
@@ -43,6 +45,10 @@ Options:
       --concurrency <n>         Max parallel API requests (default 3, max 20)
       --utf8-bom                Prefix export CSV with a UTF-8 BOM (Excel)
       --skip-confirmation       Skip typed confirmation (DANGEROUS — automated scripts only)
+      --shard-by <strategy>     Split a topic export: category | date | contentType
+      --created-from <date>     Date shard start (YYYY-MM-DD); required with --shard-by date
+      --created-to <date>       Date shard end (YYYY-MM-DD); required with --shard-by date
+      --shard-separate          Write one CSV per shard instead of merging
       --auth-check              Acquire an OAuth token and report expiry (token is not printed)
   -h, --help                    Show this help
   -v, --version                 Show version
@@ -67,6 +73,10 @@ export function parseCliFlags(argv: string[]): CliFlags {
       concurrency: { type: "string" },
       "utf8-bom": { type: "boolean", default: false },
       "skip-confirmation": { type: "boolean", default: false },
+      "shard-by": { type: "string" },
+      "created-from": { type: "string" },
+      "created-to": { type: "string" },
+      "shard-separate": { type: "boolean", default: false },
       "auth-check": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
       version: { type: "boolean", short: "v", default: false },
@@ -90,6 +100,10 @@ export function parseCliFlags(argv: string[]): CliFlags {
     concurrency: parseConcurrency(values.concurrency),
     utf8Bom: values["utf8-bom"] === true,
     skipConfirmation: values["skip-confirmation"] === true,
+    shardSeparate: values["shard-separate"] === true,
+    ...(values["shard-by"] !== undefined ? { shardBy: values["shard-by"] } : {}),
+    ...(values["created-from"] !== undefined ? { createdFrom: values["created-from"] } : {}),
+    ...(values["created-to"] !== undefined ? { createdTo: values["created-to"] } : {}),
   };
 }
 
@@ -156,6 +170,33 @@ export async function main(
         return 1;
       }
       const adapter = getAdapter(flags.resource, api);
+      if (flags.shardBy !== undefined) {
+        io.log(`Exporting ${adapter.label} (sharded by ${flags.shardBy}) → ${flags.out}`);
+        const shardOpts: Parameters<typeof exportSharded>[0] = {
+          adapter,
+          client: api,
+          strategy: parseShardBy(flags.shardBy),
+          outPath: flags.out,
+          separateFiles: flags.shardSeparate,
+          onShard: (index, total, shard, outcome) => {
+            const status =
+              outcome.error !== undefined ? `FAILED ${outcome.error}` : `${outcome.rowCount} rows`;
+            io.log(`  shard ${index}/${total} ${shard.id}: ${status}`);
+          },
+        };
+        if (flags.utf8Bom === true) {
+          shardOpts.utf8Bom = true;
+        }
+        if (flags.createdFrom !== undefined) {
+          shardOpts.createdFrom = flags.createdFrom;
+        }
+        if (flags.createdTo !== undefined) {
+          shardOpts.createdTo = flags.createdTo;
+        }
+        const sharded = await exportSharded(shardOpts);
+        io.log(formatShardedSummary(sharded));
+        return sharded.failed > 0 ? 1 : 0;
+      }
       io.log(`Exporting ${adapter.label} → ${flags.out}`);
       const result = await exportResource(adapter, {
         outPath: flags.out,
@@ -167,6 +208,7 @@ export async function main(
       io.log(`Wrote ${result.rowCount} rows (${result.pageCount} pages) to ${result.outPath}`);
       if (result.hitCap) {
         io.error(TOPIC_CAP_HINT);
+        io.error("Re-run with --shard-by=category|date|contentType (contentType is topics only).");
       }
       return 0;
     }
@@ -262,6 +304,7 @@ export async function main(
       error instanceof ProfileError ||
       error instanceof AuthError ||
       error instanceof AdapterError ||
+      error instanceof FilterShardError ||
       error instanceof Error
         ? error.message
         : String(error);

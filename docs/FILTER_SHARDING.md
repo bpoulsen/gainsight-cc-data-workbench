@@ -10,15 +10,25 @@ This cap applies to `--resource topics` **and** to `questions` / `ideas` / `conv
 
 It does **not** apply to users, events, taxonomy, gamification, or search. Search (`GET /search`) is a relevance query, not a full dump — do not use it as a 10k workaround unless you only need hits for a term.
 
-## Prefer the wizard for filtered exports
+## Prefer the wizard, or `--shard-by`
 
-Scripted `--op export` currently sends **empty filters** (unfiltered pagination until exhausted or capped). To apply filters, run:
+Scripted `--op export` without `--shard-by` still sends **empty filters** (unfiltered pagination until exhausted or capped).
+
+To shard automatically:
 
 ```bash
-pnpm gs --profile sandbox
+pnpm gs --profile sandbox --resource topics --op export --out topics.csv --shard-by contentType
+pnpm gs --profile sandbox --resource questions --op export --out questions.csv --shard-by category
+pnpm gs --profile sandbox --resource topics --op export --out topics.csv --shard-by date \
+  --created-from 2025-01-01 --created-to 2026-08-20
+pnpm gs --profile sandbox --resource topics --op export --out topics.csv --shard-by category --shard-separate
 ```
 
-Choose the resource → Export (or Explore, then save to CSV) and fill in the filter prompts. Leave a prompt empty to skip it.
+`--shard-by contentType` is only valid for unified **topics** (typed resources already filter `contentTypes[]`). Date sharding requires `--created-from` and `--created-to` (`YYYY-MM-DD`). Default layout is one merged CSV; `--shard-separate` writes `topics.question.csv`, `topics.cat-6.csv`, etc.
+
+The wizard offers auto-shard after a 10k cap (explore or export) on topic resources. You pick strategy, date window (if needed), and merge vs separate files.
+
+A shard that still hits 10,000 is reported as `HIT_CAP` and the job continues with the other shards. Split that shard further (category × month). Failed shards are listed in the summary; other shards still run.
 
 ## How to shard a large topic export
 
@@ -44,8 +54,8 @@ Name files so you can concatenate later (`questions-cat-6-2025-q1.csv`, …). Do
 
 ## Detecting a cap
 
-- Wizard: warning text after explore/export.
-- Scripted export: still writes the file and exits 0; the 10k hint is printed to stderr when `hitCap` is set.
+- Wizard: warning text, then an offer to auto-shard.
+- Scripted export: still writes the file and exits 0; the 10k hint is printed to stderr when `hitCap` is set. Re-run with `--shard-by`.
 - HTTP 422 body mentioning 10,000 / 10000.
 
 Re-run with narrower filters. Do not raise `--concurrency` to “get more rows” — the cap is a result window, not a rate limit.

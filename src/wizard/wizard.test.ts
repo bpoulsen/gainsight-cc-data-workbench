@@ -240,6 +240,38 @@ describe("runWizard", () => {
     expect(scripted.outros[0]).toMatch(/Previewed 2/);
   });
 
+  it("auto-shards a capped topic explore into content-type exports", async () => {
+    const dir = tempWorkspace();
+    const adapter = new TopicsOnlyAdapter(stubClient);
+    adapter.hitCap = true;
+    const outPath = join(dir, "topics.csv");
+    const exportResource = vi.fn(async (_adapter, options: { outPath: string }) => {
+      writeFileSync(options.outPath, "id,email,username\n7,ops@example.com,ops\n");
+      const result: ExportResult = {
+        rowCount: 1,
+        pageCount: 1,
+        outPath: options.outPath,
+        columns: ["id", "email", "username"],
+        hitCap: false,
+      };
+      return result;
+    });
+    const scripted = createScriptedUi({
+      selects: ["topics", "explore", "contentType", "merge"],
+      texts: ["", outPath],
+      confirms: [true],
+    });
+    const code = await runWizard(
+      baseOptions(dir, adapter, scripted.ui, {
+        listResources: () => ["topics"],
+        exportResource,
+      }),
+    );
+    expect(code).toBe(0);
+    expect(exportResource).toHaveBeenCalledTimes(5);
+    expect(scripted.info.some((line) => line.includes("Sharded export"))).toBe(true);
+  });
+
   it("exports after collecting filters", async () => {
     const dir = tempWorkspace();
     const adapter = new FakeUsersAdapter(stubClient);

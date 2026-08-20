@@ -29,7 +29,7 @@ export interface ExportResult {
 /**
  * Stream `adapter.list()` pages into a CSV.
  * `filters` defaults to `{}` (unfiltered). The wizard supplies filters; scripted
- * `--op export` currently does not.
+ * `--op export` currently does not, unless you pass `--shard-by`.
  */
 export async function exportResource(
   adapter: IResourceAdapter,
