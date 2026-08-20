@@ -36,10 +36,12 @@ import {
 import type { CliFlags, GainsightConfig, ProfileName } from "../lib/types.js";
 import {
   applyParsedFilter,
+  csvHasNativeBulkIdColumn,
   defaultExportPath,
   EXPLORE_PAGE_SIZE,
   formatPreviewTable,
   missingRequiredColumns,
+  nativeBulkOperationFor,
   parseFilterInput,
   previewColumns,
   shouldLaunchWizard,
@@ -500,10 +502,58 @@ async function bulkMode(
   }
 
   const headers = await peekCsvHeaders(csvPath);
-  const missing = missingRequiredColumns(headers, spec, adapter.identity);
+  let resolvedSpec = spec;
+  let groupNativeBulk = true;
+
+  const nativeAlias =
+    resolvedSpec.nativeBulk === true ? resolvedSpec.name : nativeBulkOperationFor(resolvedSpec.name);
+  const canUseNativeIds =
+    nativeAlias !== undefined && csvHasNativeBulkIdColumn(headers, nativeAlias);
+
+  if (resolvedSpec.nativeBulk !== true && nativeAlias !== undefined && canUseNativeIds) {
+    const nativeSpec = operations.find((operation) => operation.name === nativeAlias);
+    if (nativeSpec) {
+      const choice = await ui.select<"grouped" | "per-row-native" | "per-row">({
+        message: "This CSV has numeric role/badge IDs. How should we call the API?",
+        options: [
+          {
+            value: "grouped",
+            label: `Native bulk (${nativeSpec.label})`,
+            hint: "group users who share the same IDs, up to 100 per request",
+          },
+          {
+            value: "per-row-native",
+            label: "Native bulk, one request per CSV row",
+            hint: nativeSpec.name,
+          },
+          {
+            value: "per-row",
+            label: resolvedSpec.label,
+            hint: resolvedSpec.name,
+          },
+        ],
+        initialValue: "grouped",
+      });
+      if (choice !== "per-row") {
+        resolvedSpec = nativeSpec;
+        groupNativeBulk = choice === "grouped";
+      }
+    }
+  } else if (resolvedSpec.nativeBulk === true) {
+    groupNativeBulk = await ui.confirm({
+      message:
+        "Group users who share the same role/badge IDs into native bulk requests (up to 100 per call)? No = one API call per CSV row.",
+      initialValue: true,
+    });
+    ui.info(
+      "If a native bulk add/award request fails, users in that batch are retried one at a time. Role/badge removers are never auto-retried.",
+    );
+  }
+
+  const missing = missingRequiredColumns(headers, resolvedSpec, adapter.identity);
   if (missing.length > 0) {
     throw new WizardError(
-      `CSV is missing required columns for ${adapter.name}/${spec.name}: ${missing.join(", ")}`,
+      `CSV is missing required columns for ${adapter.name}/${resolvedSpec.name}: ${missing.join(", ")}`,
     );
   }
 
@@ -517,19 +567,19 @@ async function bulkMode(
     ui.error(
       formatProdWriteBanner({
         resource: adapter.name,
-        operation: spec.name,
+        operation: resolvedSpec.name,
         rowCount,
         timestamp: new Date().toISOString(),
       }),
     );
     ui.warn(
-      `${config.profile} · ${adapter.name}/${spec.name} · ${rowCount} row(s)${dryRun ? " · dry-run" : ""}`,
+      `${config.profile} · ${adapter.name}/${resolvedSpec.name} · ${rowCount} row(s)${dryRun ? " · dry-run" : ""}`,
     );
   }
 
-  if (operationRequiresTypedConfirmation(spec) && !dryRun) {
+  if (operationRequiresTypedConfirmation(resolvedSpec) && !dryRun) {
     const confirmed = await confirmDestructiveOperation({
-      operation: spec.name,
+      operation: resolvedSpec.name,
       resource: adapter.name,
       rowCount,
       skipConfirmation: options.flags.skipConfirmation,
@@ -553,14 +603,14 @@ async function bulkMode(
   const secrets = [config.clientId, config.clientSecret];
   const spin = ui.spinner();
   spin.start(
-    `${dryRun ? "Planning" : "Running"} ${adapter.name}/${spec.name} (${rowCount} rows)…`,
+    `${dryRun ? "Planning" : "Running"} ${adapter.name}/${resolvedSpec.name} (${rowCount} rows)…`,
   );
 
   try {
     const summary = await withInterrupt((signal) => {
       const job: Parameters<typeof runBulkJob>[0] = {
         csvPath,
-        operation: spec.name,
+        operation: resolvedSpec.name,
         adapter,
         client,
         profile: config.profile,
@@ -576,6 +626,9 @@ async function bulkMode(
         },
         onUnknownColumn: (header) => unknown.add(header),
       };
+      if (groupNativeBulk === false) {
+        job.groupNativeBulk = false;
+      }
       if (options.flags.results !== undefined) {
         job.resultsPath = options.flags.results;
       }

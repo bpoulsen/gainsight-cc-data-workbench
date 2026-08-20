@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { parseCliFlags } from "../cli.js";
 import {
   applyParsedFilter,
+  csvHasNativeBulkIdColumn,
   defaultExportPath,
   formatPreviewTable,
   isTypedConfirmation,
   missingRequiredColumns,
+  nativeBulkOperationFor,
   parseFilterInput,
   previewColumns,
   shouldLaunchWizard,
@@ -116,6 +118,21 @@ describe("missingRequiredColumns", () => {
         "id",
       ),
     ).toEqual(["id"]);
+  });
+});
+
+describe("native bulk wizard helpers", () => {
+  it("maps per-row role/badge ops to native bulk counterparts", () => {
+    expect(nativeBulkOperationFor("addRole")).toBe("bulkAddRoles");
+    expect(nativeBulkOperationFor("revokeBadge")).toBe("bulkRevokeBadges");
+    expect(nativeBulkOperationFor("updateField")).toBeUndefined();
+  });
+
+  it("detects numeric id columns used by native bulk endpoints", () => {
+    expect(csvHasNativeBulkIdColumn(["id", "roleIds"], "bulkAddRoles")).toBe(true);
+    expect(csvHasNativeBulkIdColumn(["id", "role"], "bulkAddRoles")).toBe(false);
+    expect(csvHasNativeBulkIdColumn(["email", "badgeIds"], "bulkAwardBadges")).toBe(true);
+    expect(csvHasNativeBulkIdColumn(["email", "badgeId"], "bulkAwardBadges")).toBe(false);
   });
 });
 

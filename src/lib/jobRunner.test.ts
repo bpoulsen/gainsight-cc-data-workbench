@@ -341,4 +341,166 @@ describe("BulkJobRunner", () => {
     expect(text).toMatch(/current: 3/);
     expect(text).toMatch(/to 1/);
   });
+
+  it("groups native bulk role rows into one request and stamps every CSV row", async () => {
+    await withTemp(async (dir) => {
+      const csvPath = join(dir, "roles.csv");
+      await writeFile(
+        csvPath,
+        "id,roleIds\n1,7|13\n2,13|7\n3,9\n",
+      );
+      const bodies: unknown[] = [];
+      const client = mockClient((url, init) => {
+        if (url.pathname === "/user/bulk/role" && init?.body) {
+          bodies.push(JSON.parse(String(init.body)));
+        }
+        return jsonResponse({ ok: true }, 200);
+      });
+      const plans: string[] = [];
+      const summary = await new BulkJobRunner().run({
+        csvPath,
+        operation: "bulkAddRoles",
+        adapter: new UsersAdapter(client),
+        client,
+        profile: "sandbox",
+        cwd: dir,
+        concurrency: 1,
+        now: () => new Date("2026-08-20T18:00:00.000Z"),
+        onPlan: (plan) => plans.push(JSON.stringify(plan.body)),
+      });
+      expect(summary.success).toBe(3);
+      expect(bodies).toEqual([
+        { data: { userIds: [1, 2], roleIds: [7, 13] } },
+        { data: { userIds: [3], roleIds: [9] } },
+      ]);
+      expect(plans).toHaveLength(2);
+      const rows = await readResults(summary.resultsPath);
+      expect(rows.map((row) => row.status)).toEqual(["success", "success", "success"]);
+      expect(rows[0]).toMatchObject({
+        id: "1",
+        http_status: "200",
+        resolved_id: "1",
+        operation: "bulkAddRoles",
+      });
+    });
+  });
+
+  it("falls back to one user per request when a native bulk add fails", async () => {
+    await withTemp(async (dir) => {
+      const csvPath = join(dir, "roles.csv");
+      await writeFile(csvPath, "id,roleIds\n1,7\n2,7\n3,7\n");
+      const userIdSets: number[][] = [];
+      const client = mockClient((url, init) => {
+        if (url.pathname !== "/user/bulk/role") {
+          return jsonResponse({ ok: true });
+        }
+        const body = JSON.parse(String(init?.body)) as { data: { userIds: number[] } };
+        userIdSets.push(body.data.userIds);
+        if (body.data.userIds.length > 1) {
+          return jsonResponse({ message: "batch too large" }, 422);
+        }
+        return jsonResponse({ ok: true }, 200);
+      });
+      const summary = await new BulkJobRunner().run({
+        csvPath,
+        operation: "bulkAddRoles",
+        adapter: new UsersAdapter(client),
+        client,
+        profile: "sandbox",
+        cwd: dir,
+        concurrency: 1,
+      });
+      expect(userIdSets[0]).toEqual([1, 2, 3]);
+      expect(userIdSets.slice(1)).toEqual([[1], [2], [3]]);
+      expect(summary.success).toBe(3);
+      expect(summary.failed).toBe(0);
+    });
+  });
+
+  it("does not fall back when a native bulk revoke fails", async () => {
+    await withTemp(async (dir) => {
+      const csvPath = join(dir, "badges.csv");
+      await writeFile(csvPath, "id,badgeIds\n1,11\n2,11\n");
+      let calls = 0;
+      const client = mockClient((url) => {
+        if (url.pathname === "/user/bulk/badge") {
+          calls += 1;
+          return jsonResponse({ message: "busy" }, 500);
+        }
+        return jsonResponse({ ok: true });
+      });
+      const summary = await new BulkJobRunner().run({
+        csvPath,
+        operation: "bulkRevokeBadges",
+        adapter: new UsersAdapter(client),
+        client,
+        profile: "sandbox",
+        cwd: dir,
+        concurrency: 1,
+      });
+      expect(calls).toBe(1);
+      expect(summary.failed).toBe(2);
+      const rows = await readResults(summary.resultsPath);
+      expect(rows.every((row) => String(row.error).startsWith("DELETE_FAILED:"))).toBe(true);
+    });
+  });
+
+  it("sends one native bulk call per CSV row when grouping is disabled", async () => {
+    await withTemp(async (dir) => {
+      const csvPath = join(dir, "roles.csv");
+      await writeFile(csvPath, "id,roleIds\n1,7\n2,7\n");
+      const userIdSets: number[][] = [];
+      const client = mockClient((url, init) => {
+        if (url.pathname === "/user/bulk/role") {
+          const body = JSON.parse(String(init?.body)) as { data: { userIds: number[] } };
+          userIdSets.push(body.data.userIds);
+          return jsonResponse({ ok: true }, 200);
+        }
+        return jsonResponse({ ok: true });
+      });
+      const summary = await new BulkJobRunner().run({
+        csvPath,
+        operation: "bulkAddRoles",
+        adapter: new UsersAdapter(client),
+        client,
+        profile: "sandbox",
+        cwd: dir,
+        groupNativeBulk: false,
+        concurrency: 1,
+      });
+      expect(summary.success).toBe(2);
+      expect(userIdSets).toEqual([[1], [2]]);
+    });
+  });
+
+  it("plans grouped native bulk without calling write endpoints", async () => {
+    await withTemp(async (dir) => {
+      const csvPath = join(dir, "roles.csv");
+      await writeFile(csvPath, "id,roleIds\n1,7\n2,7\n");
+      const writes: string[] = [];
+      const client = mockClient((url, init) => {
+        writes.push(`${init?.method ?? "GET"} ${url.pathname}`);
+        return jsonResponse({ ok: true });
+      });
+      const plans: Array<{ path: string; userIds: number[] }> = [];
+      const summary = await new BulkJobRunner().run({
+        csvPath,
+        operation: "bulkAddRoles",
+        adapter: new UsersAdapter(client),
+        client,
+        profile: "sandbox",
+        cwd: dir,
+        dryRun: true,
+        onPlan: (plan) => {
+          const body = plan.body as { data: { userIds: number[] } };
+          plans.push({ path: plan.path, userIds: body.data.userIds });
+        },
+      });
+      expect(summary.planned).toBe(2);
+      expect(plans).toEqual([{ path: "/user/bulk/role", userIds: [1, 2] }]);
+      expect(writes.every((item) => item.startsWith("GET") || item.startsWith("POST /oauth2"))).toBe(
+        true,
+      );
+    });
+  });
 });

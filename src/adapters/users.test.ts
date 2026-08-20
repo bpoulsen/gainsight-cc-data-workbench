@@ -137,6 +137,12 @@ describe("UsersAdapter fromCsvRow", () => {
       path: "/user/7/badge/11",
     });
 
+    expect(adapter.fromCsvRow({ roleIds: "7|13" }, "bulkAddRoles", { resolvedId: 3 })).toMatchObject({
+      method: "POST",
+      path: "/user/bulk/role",
+      body: { data: { userIds: [3], roleIds: [7, 13] } },
+    });
+
     const erase = adapter.fromCsvRow({ id: 7 }, "erase");
     expect(erase.method).toBe("DELETE");
     expect(erase.path).toBe("/user/7/erase");
@@ -166,14 +172,15 @@ describe("UsersAdapter native bulk", () => {
       2,
     );
     expect(plans).toHaveLength(3);
-    expect(plans[0]).toMatchObject({
+    expect(plans[0]?.plan).toMatchObject({
       method: "POST",
       path: "/user/bulk/role",
       body: { data: { userIds: [1, 2], roleIds: [7, 13] } },
       retryable: true,
     });
-    expect(plans[1]?.body).toEqual({ data: { userIds: [3], roleIds: [7, 13] } });
-    expect(plans[2]).toMatchObject({
+    expect(plans[0]?.members.map((member) => member.resolvedId)).toEqual([1, 2]);
+    expect(plans[1]?.plan.body).toEqual({ data: { userIds: [3], roleIds: [7, 13] } });
+    expect(plans[2]?.plan).toMatchObject({
       body: { data: { userIds: [4], roleIds: [9] } },
     });
   });
@@ -183,7 +190,7 @@ describe("UsersAdapter native bulk", () => {
       [{ row: { badgeIds: 11 }, resolvedId: 8 }],
       "bulkRevokeBadges",
     );
-    expect(plans[0]).toMatchObject({
+    expect(plans[0]?.plan).toMatchObject({
       method: "DELETE",
       path: "/user/bulk/badge",
       body: { data: { userIds: [8], badgeIds: [11] } },
@@ -193,6 +200,19 @@ describe("UsersAdapter native bulk", () => {
 
   it("chunks arrays to the configured size", () => {
     expect(chunkItems([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
+  });
+
+  it("keeps duplicate CSV rows for the same user in the same batch", () => {
+    const plans = adapter.nativeBulkPlans(
+      [
+        { row: { roleIds: "7" }, resolvedId: 1, index: 0 },
+        { row: { roleIds: "7" }, resolvedId: 1, index: 1 },
+      ],
+      "bulkAddRoles",
+    );
+    expect(plans).toHaveLength(1);
+    expect(plans[0]?.plan.body).toEqual({ data: { userIds: [1], roleIds: [7] } });
+    expect(plans[0]?.members.map((member) => member.index)).toEqual([0, 1]);
   });
 });
 

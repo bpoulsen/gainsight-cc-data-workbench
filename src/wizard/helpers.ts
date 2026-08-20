@@ -64,6 +64,30 @@ export function operationNeedsIdentity(kind: OperationKind, name: string): boole
   return kind !== "create" || name === "createReply";
 }
 
+/** Per-row user ops that have a native bulk counterpart. */
+export const PER_ROW_TO_NATIVE_BULK: Record<string, string> = {
+  addRole: "bulkAddRoles",
+  removeRole: "bulkRemoveRoles",
+  awardBadge: "bulkAwardBadges",
+  revokeBadge: "bulkRevokeBadges",
+};
+
+export function nativeBulkOperationFor(operation: string): string | undefined {
+  return PER_ROW_TO_NATIVE_BULK[operation];
+}
+
+/** True when the CSV has numeric id columns the native bulk endpoints require. */
+export function csvHasNativeBulkIdColumn(headers: string[], nativeOperation: string): boolean {
+  const headerSet = new Set(headers.map((header) => header.trim()));
+  if (nativeOperation === "bulkAddRoles" || nativeOperation === "bulkRemoveRoles") {
+    return headerSet.has("roleIds");
+  }
+  if (nativeOperation === "bulkAwardBadges" || nativeOperation === "bulkRevokeBadges") {
+    return headerSet.has("badgeIds");
+  }
+  return false;
+}
+
 export function missingRequiredColumns(
   headers: string[],
   spec: Pick<ResourceOperation, "requiredColumns" | "kind" | "name">,

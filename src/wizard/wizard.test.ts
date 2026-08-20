@@ -120,6 +120,27 @@ class TopicsOnlyAdapter extends FakeUsersAdapter {
   }
 }
 
+class NativeBulkUsersAdapter extends FakeUsersAdapter {
+  override operations(): ResourceOperation[] {
+    return [
+      ...super.operations(),
+      {
+        name: "addRole",
+        kind: "update",
+        label: "Add role",
+        requiredColumns: ["role"],
+      },
+      {
+        name: "bulkAddRoles",
+        kind: "update",
+        label: "Bulk add roles",
+        nativeBulk: true,
+        requiredColumns: ["roleIds"],
+      },
+    ];
+  }
+}
+
 function createScriptedUi(script: {
   selects?: unknown[];
   texts?: string[];
@@ -443,5 +464,82 @@ describe("runWizard", () => {
         baseOptions(dir, adapter, scripted.ui, { listResources: () => ["topics"] }),
       ),
     ).rejects.toThrow(/no bulk operations/);
+  });
+
+  it("switches addRole to grouped native bulk when the CSV has roleIds", async () => {
+    const dir = tempWorkspace();
+    const csvPath = join(dir, "roles.csv");
+    writeFileSync(csvPath, "id,roleIds\n7,2|5\n8,2|5\n");
+    const adapter = new NativeBulkUsersAdapter(stubClient);
+    const runBulkJob = vi.fn(async () => {
+      const summary: BulkJobSummary = {
+        total: 2,
+        success: 0,
+        failed: 0,
+        skipped: 0,
+        planned: 2,
+        durationMs: 4,
+        resultsPath: join(dir, "roles.results.csv"),
+        operation: "bulkAddRoles",
+        resource: "users",
+        profile: "sandbox",
+        dryRun: true,
+        sawRateLimit: false,
+        rateLimitCount: 0,
+        concurrency: 3,
+      };
+      return summary;
+    });
+    const scripted = createScriptedUi({
+      selects: ["users", "bulk", "addRole", "grouped"],
+      texts: [csvPath],
+      confirms: [true],
+    });
+    const code = await runWizard(baseOptions(dir, adapter, scripted.ui, { runBulkJob }));
+    expect(code).toBe(0);
+    expect(runBulkJob.mock.calls[0]?.[0]).toMatchObject({
+      operation: "bulkAddRoles",
+      dryRun: true,
+      csvPath,
+    });
+    expect(runBulkJob.mock.calls[0]?.[0]).not.toHaveProperty("groupNativeBulk");
+  });
+
+  it("lets the operator disable native bulk grouping", async () => {
+    const dir = tempWorkspace();
+    const csvPath = join(dir, "roles.csv");
+    writeFileSync(csvPath, "id,roleIds\n7,2\n8,2\n");
+    const adapter = new NativeBulkUsersAdapter(stubClient);
+    const runBulkJob = vi.fn(async () => {
+      const summary: BulkJobSummary = {
+        total: 2,
+        success: 0,
+        failed: 0,
+        skipped: 0,
+        planned: 2,
+        durationMs: 3,
+        resultsPath: join(dir, "roles.results.csv"),
+        operation: "bulkAddRoles",
+        resource: "users",
+        profile: "sandbox",
+        dryRun: true,
+        sawRateLimit: false,
+        rateLimitCount: 0,
+        concurrency: 3,
+      };
+      return summary;
+    });
+    const scripted = createScriptedUi({
+      selects: ["users", "bulk", "bulkAddRoles"],
+      texts: [csvPath],
+      confirms: [false, true],
+    });
+    await runWizard(baseOptions(dir, adapter, scripted.ui, { runBulkJob }));
+    expect(runBulkJob.mock.calls[0]?.[0]).toMatchObject({
+      operation: "bulkAddRoles",
+      groupNativeBulk: false,
+      dryRun: true,
+    });
+    expect(scripted.info.some((line) => /retried one at a time/i.test(line))).toBe(true);
   });
 });

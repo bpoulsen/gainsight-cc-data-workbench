@@ -9,6 +9,8 @@ import {
   type ExportField,
   type FilterPrompt,
   type FromCsvRowContext,
+  type NativeBulkBatch,
+  type NativeBulkMember,
   type PageRequest,
   type ResourceOperation,
 } from "./base.js";
@@ -480,20 +482,25 @@ export class UsersAdapter extends BaseAdapter {
       });
     }
     if (NATIVE_BULK_OPS.has(operation)) {
-      const [plan] = this.nativeBulkPlans([{ row, resolvedId: Number(id) }], operation);
-      if (!plan) {
+      const [batch] = this.nativeBulkPlans([{ row, resolvedId: Number(id) }], operation);
+      if (!batch) {
         throw new AdapterError(`Could not build bulk plan for ${operation}`);
       }
-      return plan;
+      return batch.plan;
     }
     throw new AdapterError(`Unsupported user operation "${operation}"`);
   }
 
-  nativeBulkPlans(
-    rows: Array<{ row: Record<string, unknown>; resolvedId: number }>,
+  /**
+   * Group resolved users who share the same role/badge id set, then chunk
+   * `userIds` at `USER_BULK_CHUNK_SIZE` (100). OpenAPI does not document a max
+   * payload; 100 is a conservative default, not an empirically measured cap.
+   */
+  nativeBulkPlans<T extends NativeBulkMember>(
+    rows: T[],
     operation: string,
     chunkSize: number = USER_BULK_CHUNK_SIZE,
-  ): ApiCallPlan[] {
+  ): NativeBulkBatch<T>[] {
     this.requireOperation(operation);
     if (!NATIVE_BULK_OPS.has(operation)) {
       throw new AdapterError(`${operation} is not a native bulk user operation`);
@@ -501,13 +508,13 @@ export class UsersAdapter extends BaseAdapter {
     const isRole = operation === "bulkAddRoles" || operation === "bulkRemoveRoles";
     const method = operation === "bulkRemoveRoles" || operation === "bulkRevokeBadges" ? "DELETE" : "POST";
     const path = isRole ? "/user/bulk/role" : "/user/bulk/badge";
-    const groups = new Map<string, { itemIds: number[]; userIds: number[] }>();
+    const groups = new Map<string, { itemIds: number[]; members: T[] }>();
 
-    for (const { row, resolvedId } of rows) {
+    for (const item of rows) {
       const itemIds = (
         isRole
-          ? asIdList(row.roleIds ?? row.roles ?? row.role, "roleIds")
-          : asIdList(row.badgeIds ?? row.badges ?? row.badgeId, "badgeIds")
+          ? asIdList(item.row.roleIds ?? item.row.roles ?? item.row.role, "roleIds")
+          : asIdList(item.row.badgeIds ?? item.row.badges ?? item.row.badgeId, "badgeIds")
       ).slice().sort((a, b) => a - b);
       if (itemIds.length === 0) {
         throw new AdapterError(
@@ -515,30 +522,36 @@ export class UsersAdapter extends BaseAdapter {
         );
       }
       const key = itemIds.join(",");
-      const group = groups.get(key) ?? { itemIds, userIds: [] };
-      if (!group.userIds.includes(resolvedId)) {
-        group.userIds.push(resolvedId);
-      }
+      const group = groups.get(key) ?? { itemIds, members: [] };
+      group.members.push(item);
       groups.set(key, group);
     }
 
-    const plans: ApiCallPlan[] = [];
+    const batches: NativeBulkBatch<T>[] = [];
     for (const group of groups.values()) {
-      for (const userIds of chunkItems(group.userIds, chunkSize)) {
+      const uniqueUserIds: number[] = [];
+      for (const member of group.members) {
+        if (!uniqueUserIds.includes(member.resolvedId)) {
+          uniqueUserIds.push(member.resolvedId);
+        }
+      }
+      for (const userIds of chunkItems(uniqueUserIds, chunkSize)) {
+        const idSet = new Set(userIds);
         const data = isRole
           ? { userIds, roleIds: group.itemIds }
           : { userIds, badgeIds: group.itemIds };
-        plans.push(
-          this.callPlan({
+        batches.push({
+          plan: this.callPlan({
             method,
             path,
             operation,
             body: { data },
           }),
-        );
+          members: group.members.filter((member) => idSet.has(member.resolvedId)),
+        });
       }
     }
-    return plans;
+    return batches;
   }
 
   describeFilters(): FilterPrompt[] {

@@ -27,6 +27,7 @@ export interface BulkCommandOptions {
   signal?: AbortSignal;
   cwd?: string;
   auditLogPath?: string;
+  groupNativeBulk?: boolean;
 }
 
 /** Run one named bulk operation over a CSV (dry-run or live) and write a results file. */
@@ -65,6 +66,9 @@ export async function runBulkJob(options: BulkCommandOptions): Promise<BulkJobSu
   }
   if (options.auditLogPath !== undefined) {
     job.auditLogPath = options.auditLogPath;
+  }
+  if (options.groupNativeBulk === false) {
+    job.groupNativeBulk = false;
   }
   return runner.run(job);
 }

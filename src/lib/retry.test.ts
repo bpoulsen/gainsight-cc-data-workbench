@@ -43,12 +43,15 @@ describe("isDeleteLike", () => {
     expect(isDeleteLike("POST", "/v2/tags/delete")).toBe(true);
     expect(isDeleteLike("POST", "/v2/articles/1/editTitle", "permanentlyDeleteArticle")).toBe(true);
     expect(isDeleteLike("POST", "/v2/articles/1", "toggleTrashed")).toBe(true);
+    expect(isDeleteLike("POST", "/user/bulk/badge", "bulkRevokeBadges")).toBe(true);
+    expect(isDeleteLike("POST", "/user/bulk/role", "bulkRemoveRoles")).toBe(true);
   });
 
   it("does not treat reads or named edits as delete-like", () => {
     expect(isDeleteLike("GET", "/v2/topics")).toBe(false);
     expect(isDeleteLike("POST", "/v2/articles/1/editTitle")).toBe(false);
     expect(isDeleteLike("PATCH", "/user/7")).toBe(false);
+    expect(isDeleteLike("POST", "/user/bulk/role", "bulkAddRoles")).toBe(false);
   });
 });
 

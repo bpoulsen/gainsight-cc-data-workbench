@@ -16,11 +16,11 @@ Explore/export: `GET /user` with role, badge, userid, join-date, and last-activi
 | `updateField` | `field`, `value` | `field` must be a User API field (`email`, `username`, `avatar`, SSO ids, …). |
 | `updateProfileField` | `field`, `value` | |
 | `deleteProfileField` | `field` | |
-| `addRole` / `removeRole` | `role` | Optional `roleName` / `user_role`. |
-| `awardBadge` / `revokeBadge` | `badgeId` | |
+| `addRole` / `removeRole` | `role` | Optional `roleName` / `user_role`. Per-user endpoints (role **names**). |
+| `awardBadge` / `revokeBadge` | `badgeId` | Per-user endpoints. |
 | `erase` | identity only | Typed confirm. **Anonymizes** that user’s content. Never auto-retried. |
-| `bulkAddRoles` / `bulkRemoveRoles` | `roleIds` | Native `POST\|DELETE /user/bulk/role`. Pipe-separated ids; chunked at 100. |
-| `bulkAwardBadges` / `bulkRevokeBadges` | `badgeIds` | Native `/user/bulk/badge`. Same chunking. |
+| `bulkAddRoles` / `bulkRemoveRoles` | `roleIds` | Native `POST\|DELETE /user/bulk/role`. Pipe-separated numeric ids. The job runner groups users who share the same id set and chunks `userIds` at **100** (conservative; OpenAPI does not document a max). Failed **adds** fall back to one user per request. Removers are never auto-retried. Results CSV stays one row per user. |
+| `bulkAwardBadges` / `bulkRevokeBadges` | `badgeIds` | Native `/user/bulk/badge`. Same grouping, chunking, and add-only fallback. |
 
 ## Content (`topics`, `questions`, `ideas`, `conversations`, `articles`, `productUpdates`)
 

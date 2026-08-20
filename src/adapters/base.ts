@@ -129,6 +129,18 @@ export interface ApiCallPlan {
   resolvedId?: string | number;
 }
 
+/** One CSV identity plus the row payload used to build a native bulk request. */
+export interface NativeBulkMember {
+  row: Record<string, unknown>;
+  resolvedId: number;
+}
+
+/** Grouped native bulk request and the CSV members it covers. */
+export interface NativeBulkBatch<T extends NativeBulkMember = NativeBulkMember> {
+  plan: ApiCallPlan;
+  members: T[];
+}
+
 export interface FromCsvRowContext {
   resolvedId?: number;
 }
@@ -161,8 +173,29 @@ export interface IResourceAdapter {
     operation: string,
     context?: FromCsvRowContext,
   ): ApiCallPlan;
+  /**
+   * Optional: group resolved CSV rows into native bulk API calls (roles/badges).
+   * Extra fields on each member are preserved on the returned batches.
+   */
+  nativeBulkPlans?<T extends NativeBulkMember>(
+    rows: T[],
+    operation: string,
+    chunkSize?: number,
+  ): NativeBulkBatch<T>[];
   executePlan(plan: ApiCallPlan, extras?: RequestExtras): Promise<ApiResponse>;
   describeFilters(): FilterPrompt[];
+}
+
+export function hasNativeBulkPlans(
+  adapter: IResourceAdapter,
+): adapter is IResourceAdapter & {
+  nativeBulkPlans: <T extends NativeBulkMember>(
+    rows: T[],
+    operation: string,
+    chunkSize?: number,
+  ) => NativeBulkBatch<T>[];
+} {
+  return typeof adapter.nativeBulkPlans === "function";
 }
 
 export function isResourceName(value: string): value is ResourceName {

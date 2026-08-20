@@ -2,7 +2,9 @@
  * Bulk job runner: stream a CSV, resolve identity, plan or execute one named
  * operation per row, and write a results CSV.
  *
- * Deletes/erase/permanent delete are never auto-retried (RetryPolicy + plan.retryable).
+ * Native bulk role/badge ops group users who share the same id set (chunks of
+ * 100). Failed add/award batches fall back to one user per request. Deletes
+ * (including bulk remove/revoke) are never auto-retried.
  */
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
@@ -10,8 +12,11 @@ import type { ApiClient } from "./apiClient.js";
 import { ApiError, RateLimitError } from "./api/errors.js";
 import {
   AdapterError,
+  hasNativeBulkPlans,
   type ApiCallPlan,
   type IResourceAdapter,
+  type NativeBulkBatch,
+  type NativeBulkMember,
   type ResourceOperation,
 } from "../adapters/base.js";
 import { redactSecrets } from "./auth.js";
@@ -58,6 +63,12 @@ export interface BulkJobOptions {
   cwd?: string;
   auditLogPath?: string;
   onAuditError?: (error: unknown) => void;
+  /**
+   * When the operation is a native bulk role/badge op, group users who share
+   * the same id set (chunks of 100). Set false to send one API call per CSV row.
+   * Default: true.
+   */
+  groupNativeBulk?: boolean;
 }
 
 export interface BulkProgress {
@@ -84,6 +95,36 @@ export interface BulkJobSummary {
   sawRateLimit: boolean;
   rateLimitCount: number;
   concurrency: number;
+}
+
+interface JobCounts {
+  success: number;
+  failed: number;
+  skipped: number;
+  planned: number;
+  sawRateLimit: boolean;
+  rateLimitCount: number;
+}
+
+interface JobRunContext {
+  spec: ResourceOperation;
+  options: BulkJobOptions;
+  identity: UserIdentityResolver;
+  dryRun: boolean;
+  now: () => Date;
+  signal: AbortSignal;
+  secrets: string[];
+  failFast: boolean;
+  failFastController: AbortController;
+  limit: ReturnType<typeof createConcurrencyLimiter>;
+  results: Array<Record<string, unknown>>;
+  counts: JobCounts;
+  onProcessed: () => void;
+}
+
+interface NativeJobMember extends NativeBulkMember {
+  index: number;
+  mapped: MappedCsvRow;
 }
 
 export class JobRunnerError extends Error {
@@ -200,42 +241,48 @@ export class BulkJobRunner {
       });
     };
 
+    const groupNativeBulk = options.groupNativeBulk !== false;
     let processed = 0;
-    await Promise.all(
-      rows.map((row, index) =>
-        limit(async () => {
-          const record = await this.processRow({
-            row,
-            spec,
-            options,
-            identity,
-            dryRun,
-            now,
-            signal,
-            secrets: secretsOf(options.client),
-          });
-          if (record.status === "failed") {
-            counts.failed += 1;
-            if (record.http_status === 429) {
-              counts.sawRateLimit = true;
-              counts.rateLimitCount += 1;
-            }
-            if (failFast && !failFastController.signal.aborted) {
-              failFastController.abort();
-            }
-          } else if (record.status === "planned") {
-            counts.planned += 1;
-          } else if (record.status === "skipped") {
-            counts.skipped += 1;
-          } else {
-            counts.success += 1;
-          }
-          results[index] = record;
-          processed += 1;
-          emitProgress(processed);
-        }),
-      ),
-    );
+    const ctx: JobRunContext = {
+      spec,
+      options,
+      identity,
+      dryRun,
+      now,
+      signal,
+      secrets: secretsOf(options.client),
+      failFast,
+      failFastController,
+      limit,
+      results,
+      counts,
+      onProcessed: () => {
+        processed += 1;
+        emitProgress(processed);
+      },
+    };
+
+    if (spec.nativeBulk === true && groupNativeBulk && hasNativeBulkPlans(options.adapter)) {
+      await this.processNativeBulk(rows, ctx);
+    } else {
+      await Promise.all(
+        rows.map((row, index) =>
+          limit(async () => {
+            const record = await this.processRow({
+              row,
+              spec,
+              options,
+              identity,
+              dryRun,
+              now,
+              signal,
+              secrets: ctx.secrets,
+            });
+            this.settleRow(index, record, ctx);
+          }),
+        ),
+      );
+    }
 
     mkdirSync(dirname(resultsPath), { recursive: true });
     const columns = [...reader.headers, ...RESULTS_CSV_COLUMNS];
@@ -294,6 +341,233 @@ export class BulkJobRunner {
       },
     );
     return summary;
+  }
+
+  private settleRow(
+    index: number,
+    record: Record<string, unknown>,
+    ctx: JobRunContext,
+  ): void {
+    if (record.status === "failed") {
+      ctx.counts.failed += 1;
+      if (record.http_status === 429) {
+        ctx.counts.sawRateLimit = true;
+        ctx.counts.rateLimitCount += 1;
+      }
+      if (ctx.failFast && !ctx.failFastController.signal.aborted) {
+        ctx.failFastController.abort();
+      }
+    } else if (record.status === "planned") {
+      ctx.counts.planned += 1;
+    } else if (record.status === "skipped") {
+      ctx.counts.skipped += 1;
+    } else {
+      ctx.counts.success += 1;
+    }
+    ctx.results[index] = record;
+    ctx.onProcessed();
+  }
+
+  private rowBase(
+    row: MappedCsvRow,
+    options: BulkJobOptions,
+    timestamp: string,
+  ): Record<string, unknown> {
+    return {
+      ...row.raw,
+      status: "failed",
+      http_status: "",
+      error: "",
+      resolved_id: "",
+      operation: options.operation,
+      profile: options.profile,
+      timestamp,
+    };
+  }
+
+  private skippedRecord(base: Record<string, unknown>): Record<string, unknown> {
+    return {
+      ...base,
+      status: "skipped",
+      error: "not run (fail-fast)",
+    };
+  }
+
+  private recordFromError(
+    base: Record<string, unknown>,
+    error: unknown,
+    secrets: string[],
+  ): Record<string, unknown> {
+    if (isAbortError(error)) {
+      return this.skippedRecord(base);
+    }
+    if (error instanceof IdentityError) {
+      const fields = identityResultsFields(error);
+      return {
+        ...base,
+        status: fields.status,
+        http_status: fields.http_status,
+        error: redactSecrets(fields.error, secrets),
+        resolved_id: fields.resolved_id || base.resolved_id,
+      };
+    }
+    const fields = toResultsFields(error);
+    return {
+      ...base,
+      status: fields.status,
+      http_status: fields.http_status,
+      error: redactSecrets(
+        error instanceof ApiError ||
+          error instanceof AdapterError ||
+          error instanceof RateLimitError ||
+          error instanceof Error
+          ? fields.error
+          : String(error),
+        secrets,
+      ),
+    };
+  }
+
+  private async processNativeBulk(rows: MappedCsvRow[], ctx: JobRunContext): Promise<void> {
+    const adapter = ctx.options.adapter;
+    if (!hasNativeBulkPlans(adapter)) {
+      return;
+    }
+    const ready: NativeJobMember[] = [];
+    const timestamp = ctx.now().toISOString();
+
+    for (const [index, mapped] of rows.entries()) {
+      const base = this.rowBase(mapped, ctx.options, timestamp);
+      if (ctx.signal.aborted) {
+        this.settleRow(index, this.skippedRecord(base), ctx);
+        continue;
+      }
+      try {
+        const resolvedId = await ctx.identity.resolveUserId(mapped.values);
+        base.resolved_id = String(resolvedId);
+        const member: NativeJobMember = {
+          row: mapped.values,
+          resolvedId,
+          index,
+          mapped,
+        };
+        adapter.nativeBulkPlans([member], ctx.options.operation);
+        ready.push(member);
+      } catch (error) {
+        this.settleRow(index, this.recordFromError(base, error, ctx.secrets), ctx);
+      }
+    }
+
+    if (ready.length === 0) {
+      return;
+    }
+
+    const batches = adapter.nativeBulkPlans(ready, ctx.options.operation);
+    const fallbackQueue: NativeBulkBatch<NativeJobMember>[] = [];
+
+    await Promise.all(
+      batches.map((batch) =>
+        ctx.limit(async () => {
+          await this.handleNativeBatch(batch, ctx, fallbackQueue);
+        }),
+      ),
+    );
+
+    if (fallbackQueue.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      fallbackQueue.map((batch) =>
+        ctx.limit(async () => {
+          await this.handleNativeBatch(batch, ctx, undefined);
+        }),
+      ),
+    );
+  }
+
+  private async handleNativeBatch(
+    batch: NativeBulkBatch<NativeJobMember>,
+    ctx: JobRunContext,
+    fallbackQueue: NativeBulkBatch<NativeJobMember>[] | undefined,
+  ): Promise<void> {
+    const first = batch.members[0];
+    if (!first) {
+      return;
+    }
+    ctx.options.onPlan?.(batch.plan, first.mapped.line);
+
+    const stampMembers = (build: (member: NativeJobMember) => Record<string, unknown>): void => {
+      for (const member of batch.members) {
+        this.settleRow(member.index, build(member), ctx);
+      }
+    };
+
+    if (ctx.dryRun) {
+      stampMembers((member) => {
+        const base = this.rowBase(member.mapped, ctx.options, ctx.now().toISOString());
+        return {
+          ...base,
+          status: "planned",
+          resolved_id: String(member.resolvedId),
+        };
+      });
+      return;
+    }
+
+    if (ctx.signal.aborted) {
+      stampMembers((member) => {
+        const base = this.rowBase(member.mapped, ctx.options, ctx.now().toISOString());
+        base.resolved_id = String(member.resolvedId);
+        return this.skippedRecord(base);
+      });
+      return;
+    }
+
+    try {
+      const extras = {
+        signal: ctx.signal,
+        operation: batch.plan.operation,
+        retryable: batch.plan.retryable,
+      };
+      const response = await ctx.options.adapter.executePlan(batch.plan, extras);
+      stampMembers((member) => {
+        const base = this.rowBase(member.mapped, ctx.options, ctx.now().toISOString());
+        return {
+          ...base,
+          status: "success",
+          http_status: response.status,
+          resolved_id: String(member.resolvedId),
+        };
+      });
+    } catch (error) {
+      if (isAbortError(error)) {
+        stampMembers((member) => {
+          const base = this.rowBase(member.mapped, ctx.options, ctx.now().toISOString());
+          base.resolved_id = String(member.resolvedId);
+          return this.skippedRecord(base);
+        });
+        return;
+      }
+      const uniqueUsers = new Set(batch.members.map((member) => member.resolvedId)).size;
+      if (
+        fallbackQueue !== undefined &&
+        uniqueUsers > 1 &&
+        batch.plan.retryable === true &&
+        (batch.plan.operation === "bulkAddRoles" || batch.plan.operation === "bulkAwardBadges") &&
+        hasNativeBulkPlans(ctx.options.adapter)
+      ) {
+        fallbackQueue.push(
+          ...ctx.options.adapter.nativeBulkPlans(batch.members, ctx.options.operation, 1),
+        );
+        return;
+      }
+      stampMembers((member) => {
+        const base = this.rowBase(member.mapped, ctx.options, ctx.now().toISOString());
+        base.resolved_id = String(member.resolvedId);
+        return this.recordFromError(base, error, ctx.secrets);
+      });
+    }
   }
 
   private async processRow(input: {
@@ -358,44 +632,7 @@ export class BulkJobRunner {
         http_status: response.status,
       };
     } catch (error) {
-      if (isAbortError(error)) {
-        return {
-          ...base,
-          status: "skipped",
-          error: "not run (fail-fast)",
-        };
-      }
-      if (error instanceof RateLimitError) {
-        const fields = toResultsFields(error);
-        return {
-          ...base,
-          status: fields.status,
-          http_status: fields.http_status,
-          error: redactSecrets(fields.error, input.secrets),
-        };
-      }
-      if (error instanceof IdentityError) {
-        const fields = identityResultsFields(error);
-        return {
-          ...base,
-          status: fields.status,
-          http_status: fields.http_status,
-          error: redactSecrets(fields.error, input.secrets),
-          resolved_id: fields.resolved_id || base.resolved_id,
-        };
-      }
-      const fields = toResultsFields(error);
-      return {
-        ...base,
-        status: fields.status,
-        http_status: fields.http_status,
-        error: redactSecrets(
-          error instanceof ApiError || error instanceof AdapterError || error instanceof Error
-            ? fields.error
-            : String(error),
-          input.secrets,
-        ),
-      };
+      return this.recordFromError(base, error, input.secrets);
     }
   }
 }

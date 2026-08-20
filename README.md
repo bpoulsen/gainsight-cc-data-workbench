@@ -75,6 +75,36 @@ pnpm gs --profile sandbox --resource users --op bulkAddRoles --csv roles.csv
 
 `--op explore` is wizard-only. Scripted jobs use `--op export` or a named write from [operations](docs/OPERATIONS.md).
 
+## Native bulk roles and badges
+
+The only native bulk APIs are user **roles** and **badges**. Every other write is one HTTP call per CSV row.
+
+CSV is still **one row per user**. Pipe-separate numeric ids. Identify users with `id` or `email` (emails are resolved before batching).
+
+```csv
+id,roleIds
+7,2|5
+8,2|5
+9,11
+```
+
+```csv
+email,badgeIds
+ops@example.com,4
+mod@example.com,4|12
+```
+
+```bash
+pnpm gs --profile sandbox --resource users --op bulkAddRoles --csv roles.csv --dry-run
+pnpm gs --profile sandbox --resource users --op bulkAwardBadges --csv badges.csv
+```
+
+The job runner **groups** users who share the same role/badge id set, then chunks `userIds` at **100** per request (a conservative default; OpenAPI does not document a payload max). The results CSV still has one row per user, all carrying that batch’s HTTP status.
+
+If a grouped **add/award** request fails, those users are retried one at a time on the same native bulk endpoint. **Remove/revoke** batches are never auto-retried (same rule as other deletes). Per-row `addRole` / `awardBadge` still exist when you have role **names** or a single `badgeId`.
+
+The wizard offers native bulk vs a per-row loop when the CSV has `roleIds` / `badgeIds`.
+
 ## Authentication and profiles
 
 Auth is OAuth2 **client credentials**. Tokens last ~2 hours; the CLI caches them in memory and refreshes 60s before expiry. A token **without** `scope=read write` will 401 on `/v2`.
@@ -198,7 +228,7 @@ Deletes are never auto-retried (a 429/5xx might have already applied). Failed ro
 4. **Events** have no category filter and no permanent-delete endpoint. Trash/restore is `toggleTrashed`. Attendee export is `userId` + `signedUpAt` (no email). `signup` / `cancelSignUp` are side-effecting for members.
 5. **Gamification** explore is leaderboards or assigned points. Bulk assign is `POST /points/assign` `{ user, points }` (no reason field). Badge award/revoke stays on **users**.
 6. **Search** is explore/export only (`GET /search`, optional tag search). Federated index write/delete is out of v1.
-7. **Bulk native APIs** are roles/badges only (chunked at 100 ids).
+7. **Bulk native APIs** are roles/badges only. The job groups matching id sets and chunks `userIds` at 100 (conservative; not an API-documented max).
 8. **`scope=read write`** is required for `/v2`.
 9. Community list endpoints cap **pageSize at 100**. Search allows up to **200**.
 

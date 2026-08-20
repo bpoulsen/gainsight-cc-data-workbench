@@ -15,6 +15,8 @@ const DELETE_OPERATIONS = new Set([
   "toggletrashed",
   "delete",
   "permanentlydelete",
+  "bulkremoveroles",
+  "bulkrevokebadges",
 ]);
 
 export interface RetryPolicyOptions {
