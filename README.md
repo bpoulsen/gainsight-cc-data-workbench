@@ -40,7 +40,7 @@ pnpm gs --help
 pnpm gs --auth-check --profile sandbox
 ```
 
-`pnpm gs` and `pnpm gainsight-workbench` both run the CLI via `tsx`. After `pnpm build`, the `gs` bin points at `dist/index.js`.
+`pnpm gs` and `pnpm gainsight-cc-data-workbench` both run the CLI via `tsx`. After `pnpm build`, the `gs` bin points at `dist/index.js`.
 
 ## What v1 covers
 

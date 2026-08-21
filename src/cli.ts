@@ -35,7 +35,7 @@ const HELP = `Gainsight CC Workbench — terminal explorer and CSV bulk tool
 
 Usage:
   pnpm gs [options]
-  pnpm gainsight-workbench [options]
+  pnpm gainsight-cc-data-workbench [options]
 
 With no --resource / --op / --csv / --out, launches the interactive wizard.
 

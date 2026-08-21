@@ -1,5 +1,5 @@
 {
-  "name": "gainsight-workbench",
+  "name": "gainsight-cc-data-workbench",
   "version": "0.1.0",
   "private": true,
   "description": "Terminal workbench for exploring and bulk-editing Gainsight Customer Communities via API",
@@ -8,12 +8,12 @@
     "node": ">=20"
   },
   "bin": {
-    "gainsight-workbench": "./dist/index.js",
+    "gainsight-cc-data-workbench": "./dist/index.js",
     "gs": "./dist/index.js"
   },
   "scripts": {
     "gs": "tsx src/index.ts",
-    "gainsight-workbench": "tsx src/index.ts",
+    "gainsight-cc-data-workbench": "tsx src/index.ts",
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",

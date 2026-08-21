@@ -89,7 +89,7 @@ Auth: `POST /oauth2/token` with `grant_type=client_credentials` and **`scope=rea
 - Config: dotenv + named profile
 - Tests: Vitest (unit for CSV mapping, identity resolution, dry-run planner; contract tests against recorded fixtures)
 
-The CLI ships as `npx` / `pnpm` script, e.g. `pnpm gs` or `gainsight-workbench`.
+The CLI ships as `npx` / `pnpm` script, e.g. `pnpm gs` or `gainsight-cc-data-workbench`.
 
 ### 5.2 Layering
 
