@@ -36,7 +36,7 @@ describe("coerceCell / mapCsvRow", () => {
   });
 
   it("rejects invalid booleans", () => {
-    expect(() => coerceCell("yes", "boolean", "closed")).toThrow(/true or false/);
+    expect(() => coerceCell("yes", "boolean", "closed")).toThrow(/Invalid closed/);
   });
 
   it("maps aliases, omits empties, and warns on unknown columns", () => {

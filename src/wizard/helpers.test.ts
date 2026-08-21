@@ -31,6 +31,7 @@ describe("shouldLaunchWizard", () => {
     expect(shouldLaunchWizard(parseCliFlags(["--help"]))).toBe(false);
     expect(shouldLaunchWizard(parseCliFlags(["--version"]))).toBe(false);
     expect(shouldLaunchWizard(parseCliFlags(["--auth-check"]))).toBe(false);
+    expect(shouldLaunchWizard(parseCliFlags(["--verbose"]))).toBe(true);
   });
 });
 

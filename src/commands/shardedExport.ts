@@ -23,6 +23,7 @@ import {
   type TopicShard,
 } from "../lib/filterSharding.js";
 import { exportResource, type ExportResult } from "./export.js";
+import { JobAbortedError } from "../lib/errors.js";
 
 export interface ShardExportOutcome {
   id: string;
@@ -111,6 +112,9 @@ export async function exportSharded(options: ShardedExportOptions): Promise<Shar
       }
       successfulPaths.push(shardPath);
     } catch (error) {
+      if (error instanceof JobAbortedError || options.signal?.aborted === true) {
+        throw error;
+      }
       outcome.error = error instanceof Error ? error.message : String(error);
     }
     outcomes.push(outcome);

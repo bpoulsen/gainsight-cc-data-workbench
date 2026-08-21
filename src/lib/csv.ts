@@ -3,6 +3,7 @@ import { Readable, type Writable } from "node:stream";
 import { finished } from "node:stream/promises";
 import { parse } from "csv-parse";
 import { stringify } from "csv-stringify";
+import { invalidField } from "./errors.js";
 
 export const PROGRESS_INTERVAL = 100;
 export const UTF8_BOM = "\uFEFF";
@@ -68,12 +69,12 @@ export function coerceCell(value: string, kind: FieldKind, field: string): unkno
       if (normalized === "false") {
         return false;
       }
-      throw new CsvError(`Column "${field}" must be true or false (got "${value}")`);
+      throw new CsvError(invalidField(field, "boolean", value));
     }
     case "number": {
       const number = Number(value);
       if (!Number.isFinite(number)) {
-        throw new CsvError(`Column "${field}" must be a number (got "${value}")`);
+        throw new CsvError(invalidField(field, "number", value));
       }
       return number;
     }
@@ -86,7 +87,7 @@ export function coerceCell(value: string, kind: FieldKind, field: string): unkno
       try {
         return JSON.parse(value) as unknown;
       } catch (error) {
-        throw new CsvError(`Column "${field}" must be valid JSON`, { cause: error });
+        throw new CsvError(invalidField(field, "json", value), { cause: error });
       }
   }
 }

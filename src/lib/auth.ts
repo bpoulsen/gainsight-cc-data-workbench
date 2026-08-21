@@ -22,6 +22,14 @@ export class AuthError extends Error {
   }
 }
 
+/** 401, missing scope, or invalid OAuth credentials. */
+export class AuthenticationError extends AuthError {
+  constructor(message: string) {
+    super(message);
+    this.name = "AuthenticationError";
+  }
+}
+
 export function redactSecrets(text: string, secrets: readonly string[]): string {
   let redacted = text;
   for (const secret of secrets) {
@@ -39,7 +47,7 @@ function secretsFrom(config: GainsightConfig, extra: string[] = []): string[] {
 }
 
 function fail(config: GainsightConfig, message: string, extra: string[] = []): never {
-  throw new AuthError(redactSecrets(message, secretsFrom(config, extra)));
+  throw new AuthenticationError(redactSecrets(message, secretsFrom(config, extra)));
 }
 
 interface TokenEndpointJson {
@@ -280,7 +288,7 @@ export function getAuthenticatedClient(
     }
 
     if (response.status === 401) {
-      throw new AuthError(
+      throw new AuthenticationError(
         redactSecrets(
           `API request unauthorized (HTTP 401) after re-authentication. ${raw.slice(0, 200)}`,
           secretsFrom(config, [token]),

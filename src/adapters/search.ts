@@ -8,6 +8,7 @@ import { DEFAULT_PAGE_SIZE } from "../lib/api/pagination.js";
 import type { QueryParams } from "../lib/auth.js";
 import type { RequestExtras } from "../lib/apiClient.js";
 import { pipeList } from "./content.js";
+import { invalidField } from "../lib/errors.js";
 import { asIdList } from "./users.js";
 import {
   AdapterError,
@@ -68,7 +69,7 @@ function optionalBoolean(value: unknown): boolean | undefined {
       return false;
     }
   }
-  throw new AdapterError("hasAnswer must be true or false");
+  throw new AdapterError(invalidField("hasAnswer", "boolean", value));
 }
 
 export function normalizeSearchHit(data: unknown): Record<string, unknown> {

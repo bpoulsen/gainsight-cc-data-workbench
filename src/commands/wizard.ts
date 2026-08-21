@@ -20,7 +20,7 @@ import {
 } from "../lib/filterSharding.js";
 import { getAuthenticatedClient, redactSecrets } from "../lib/auth.js";
 import type { QueryParams } from "../lib/auth.js";
-import { createApiClient, type ApiClient } from "../lib/apiClient.js";
+import { createApiClient, isDebugEnabled, type ApiClient } from "../lib/apiClient.js";
 import {
   availableProfiles,
   formatProdWriteBanner,
@@ -50,6 +50,14 @@ import {
   type WizardMode,
 } from "../wizard/helpers.js";
 import { createClackUi, type WizardUi } from "../wizard/ui.js";
+import {
+  EXIT_ERROR,
+  JobAbortedError,
+  exitCodeForJob,
+  exitCodeForShards,
+  missingRequiredColumn,
+  runWithInterrupt,
+} from "../lib/errors.js";
 
 export interface WizardIo {
   log: (msg: string) => void;
@@ -94,7 +102,9 @@ async function runWizardInner(options: RunWizardOptions, ui: WizardUi): Promise<
   ui.info(`Profile: ${config.profile}`);
   ui.info(`API host: ${config.baseUrl}`);
 
-  const authenticate = options.authenticate ?? defaultAuthenticate;
+  const authenticate =
+    options.authenticate ??
+    ((cfg, concurrency) => defaultAuthenticate(cfg, concurrency, options.flags.verbose));
   const session = await authenticate(config, options.flags.concurrency);
   ui.success(`Authenticated. Token expires in ~${session.secondsLeft}s.`);
 
@@ -149,7 +159,7 @@ async function selectProfile(options: RunWizardOptions, ui: WizardUi): Promise<P
   const profiles = availableProfiles(options.cwd);
   if (profiles.length === 0) {
     throw new WizardError(
-      "No profile configured. Copy .env.sandbox.example to .env.sandbox (and optionally .env.prod.example to .env.prod).",
+      "No profile configured. Create .env.sandbox with GAINSIGHT_BASE_URL, GAINSIGHT_CLIENT_ID, GAINSIGHT_CLIENT_SECRET.",
     );
   }
   if (profiles.length === 1) {
@@ -214,7 +224,7 @@ async function exploreMode(
     spin.start(`Fetching ${adapter.label} (page ${page})…`);
     let result;
     try {
-      result = await withInterrupt((signal) =>
+      result = await runWithInterrupt((signal) =>
         adapter.list(filters, { page, pageSize: EXPLORE_PAGE_SIZE, signal }),
       );
     } finally {
@@ -311,7 +321,7 @@ async function runExport(
   const spin = ui.spinner();
   spin.start(`Exporting ${adapter.label}…`);
   try {
-    const result = await withInterrupt((signal) => {
+    const result = await runWithInterrupt((signal) => {
       const exportOpts: Parameters<typeof exportResource>[1] = {
         outPath,
         filters,
@@ -341,6 +351,11 @@ async function runExport(
     }
     return 0;
   } catch (error) {
+    if (error instanceof JobAbortedError) {
+      spin.stop("Job aborted");
+      ui.error(error.message);
+      return EXIT_ERROR;
+    }
     spin.stop("Export failed");
     throw error;
   }
@@ -437,7 +452,7 @@ async function runShardedWizardExport(
     if (options.listCategories !== undefined) {
       shardOpts.listCategories = options.listCategories;
     }
-    const result = await withInterrupt((signal) => {
+    const result = await runWithInterrupt((signal) => {
       shardOpts.signal = signal;
       return exportSharded(shardOpts);
     });
@@ -448,8 +463,13 @@ async function runShardedWizardExport(
         ? `Finished with ${result.failed} failed shard(s).`
         : `Results: ${result.outPath}`,
     );
-    return result.failed > 0 ? 1 : 0;
+    return exitCodeForShards(result.failed, result.shards.length);
   } catch (error) {
+    if (error instanceof JobAbortedError) {
+      spin.stop("Job aborted");
+      ui.error(error.message);
+      return EXIT_ERROR;
+    }
     spin.stop("Sharded export failed");
     throw error;
   }
@@ -552,9 +572,7 @@ async function bulkMode(
 
   const missing = missingRequiredColumns(headers, resolvedSpec, adapter.identity);
   if (missing.length > 0) {
-    throw new WizardError(
-      `CSV is missing required columns for ${adapter.name}/${resolvedSpec.name}: ${missing.join(", ")}`,
-    );
+    throw new WizardError(missingRequiredColumn(missing.join(", "), resolvedSpec.name));
   }
 
   const dryRun = await ui.confirm({
@@ -607,7 +625,7 @@ async function bulkMode(
   );
 
   try {
-    const summary = await withInterrupt((signal) => {
+    const summary = await runWithInterrupt((signal) => {
       const job: Parameters<typeof runBulkJob>[0] = {
         csvPath,
         operation: resolvedSpec.name,
@@ -653,8 +671,13 @@ async function bulkMode(
         ? `Finished with ${summary.failed} failed row(s). See ${summary.resultsPath}`
         : `Results: ${summary.resultsPath}`,
     );
-    return summary.failed > 0 ? 1 : 0;
+    return exitCodeForJob(summary);
   } catch (error) {
+    if (error instanceof JobAbortedError) {
+      spin.stop("Job aborted");
+      ui.error(error.message);
+      return EXIT_ERROR;
+    }
     spin.stop("Bulk job failed");
     throw error;
   }
@@ -663,28 +686,19 @@ async function bulkMode(
 async function defaultAuthenticate(
   config: GainsightConfig,
   concurrency: number,
+  verbose = false,
 ): Promise<AuthenticatedSession> {
   const auth = getAuthenticatedClient(config);
-  const api = createApiClient(auth, { concurrency });
+  const api = createApiClient(auth, {
+    concurrency,
+    isDebugEnabled: () => verbose || isDebugEnabled(),
+  });
   await api.auth.tokenManager.getAccessToken();
   const cached = api.auth.tokenManager.getCachedToken();
   const secondsLeft = cached
     ? Math.max(0, Math.round((cached.expiresAt - Date.now()) / 1000))
     : 0;
   return { client: api, secondsLeft };
-}
-
-async function withInterrupt<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
-  const controller = new AbortController();
-  const onInterrupt = (): void => {
-    controller.abort();
-  };
-  process.on("SIGINT", onInterrupt);
-  try {
-    return await fn(controller.signal);
-  } finally {
-    process.off("SIGINT", onInterrupt);
-  }
 }
 
 export { shouldLaunchWizard, WizardCancelled, WizardError };

@@ -449,7 +449,7 @@ describe("runWizard", () => {
     });
     await expect(
       runWizard(baseOptions(dir, adapter, scripted.ui, { runBulkJob })),
-    ).rejects.toThrow(/missing required columns/);
+    ).rejects.toThrow(/Missing required column/);
     expect(runBulkJob).not.toHaveBeenCalled();
   });
 

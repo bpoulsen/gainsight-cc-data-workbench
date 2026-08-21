@@ -9,6 +9,7 @@ import type { GainsightConfig } from "./types.js";
 import { UsersAdapter } from "../adapters/users.js";
 import { ContentAdapter } from "../adapters/content.js";
 import { BulkJobRunner, defaultResultsPath, formatJobSummary } from "./jobRunner.js";
+import { JobAbortedError } from "./errors.js";
 import { CsvReader } from "./csv.js";
 
 const config: GainsightConfig = {
@@ -536,6 +537,44 @@ describe("BulkJobRunner", () => {
       });
       expect(summary.success).toBe(4);
       expect(maxInflight).toBeLessThanOrEqual(2);
+    });
+  });
+
+  it("writes partial results and throws JobAbortedError on user abort", async () => {
+    await withTemp(async (dir) => {
+      const csvPath = join(dir, "users.csv");
+      await writeFile(csvPath, "id,field,value\n7,username,ops\n8,username,mod\n9,username,cs\n");
+      const controller = new AbortController();
+      const client = mockClient(async (url) => {
+        if (url.pathname.includes("/user/7/")) {
+          controller.abort();
+        }
+        return jsonResponse({ ok: true }, 200);
+      });
+      const error = await new BulkJobRunner()
+        .run({
+          csvPath,
+          operation: "updateField",
+          adapter: new UsersAdapter(client),
+          client,
+          profile: "sandbox",
+          cwd: dir,
+          concurrency: 1,
+          signal: controller.signal,
+        })
+        .then(
+          () => {
+            throw new Error("expected JobAbortedError");
+          },
+          (caught: unknown) => caught,
+        );
+      expect(error).toBeInstanceOf(JobAbortedError);
+      expect(String(error)).toMatch(/Partial results saved/);
+      const resultsPath = (error as JobAbortedError).resultsPath;
+      expect(resultsPath).toBeDefined();
+      const rows = await readResults(resultsPath as string);
+      expect(rows).toHaveLength(3);
+      expect(rows.some((row) => row.status === "skipped" || row.status === "success")).toBe(true);
     });
   });
 });

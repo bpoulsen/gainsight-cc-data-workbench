@@ -94,16 +94,17 @@ describe("loadProfile", () => {
   });
 
   it("errors when the env file is missing", () => {
-    expect(() => loadProfile("prod", tempWorkspace())).toThrow(/Missing \.env\.prod/);
+    expect(() => loadProfile("prod", tempWorkspace())).toThrow(/Profile prod not configured/);
   });
 
-  it("does not include secrets in missing-file errors", () => {
+  it("does not include credential values in missing-file errors", () => {
     try {
       loadProfile("sandbox", tempWorkspace());
       throw new Error("expected ProfileError");
     } catch (error) {
       expect(error).toBeInstanceOf(ProfileError);
-      expect(String(error)).not.toMatch(/secret/i);
+      expect(String(error)).toMatch(/GAINSIGHT_CLIENT_SECRET/);
+      expect(String(error)).not.toMatch(/secret-1|client-secret-value/i);
     }
   });
 });

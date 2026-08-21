@@ -1,3 +1,4 @@
+import { userNotFound } from "./errors.js";
 import { NotFoundError, usersApi, type ApiClient } from "./apiClient.js";
 
 export type IdentityErrorCode = "missing" | "invalid_id" | "not_found" | "conflict";
@@ -147,7 +148,7 @@ function normalizeEmail(email: string): string {
 }
 
 function notFound(email: string, cause?: unknown): IdentityError {
-  return new IdentityError(`User not found for email ${email}`, {
+  return new IdentityError(userNotFound(email), {
     code: "not_found",
     httpStatus: 404,
     email,

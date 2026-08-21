@@ -23,7 +23,7 @@ Resolution rules:
 2. `email` only → resolved to userid. Distinct emails are prefetched once per job and cached in memory (case-insensitive).
 3. Both `id` and `email` → email is still resolved. If it maps to a **different** userid, the row fails with a conflict error. The tool will not guess.
 4. Neither → the row fails (`User row requires id or email`).
-5. Unknown email → HTTP 404 / `User not found for email …`.
+5. Unknown email → HTTP 404 / `User not found: {email}. Verify email address.`
 
 The results CSV `resolved_id` column is the numeric userid used for the call. Audit logs never store emails or names.
 

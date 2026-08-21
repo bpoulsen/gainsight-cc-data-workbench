@@ -5,6 +5,7 @@ import type { QueryParams } from "../lib/auth.js";
 import { CsvWriter } from "../lib/csv.js";
 import type { IResourceAdapter } from "../adapters/base.js";
 import { TOPIC_CAP_HINT } from "../adapters/content.js";
+import { isAbortError, JobAbortedError, jobAborted } from "../lib/errors.js";
 
 /** Page size for export pagination. User list has no documented max; 100 keeps request count down. */
 export const EXPORT_PAGE_SIZE = 100;
@@ -68,6 +69,11 @@ export async function exportResource(
       }
       page += 1;
     }
+  } catch (error) {
+    if (isAbortError(error) || options.signal?.aborted === true) {
+      throw new JobAbortedError(jobAborted(options.outPath), options.outPath);
+    }
+    throw error;
   } finally {
     await writer.end();
   }

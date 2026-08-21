@@ -30,6 +30,7 @@ import {
   type FieldKind,
 } from "../lib/csv.js";
 import { isDeleteLike } from "../lib/retry.js";
+import { missingRequiredColumn } from "../lib/errors.js";
 
 export const RESOURCE_NAMES = [
   "users",
@@ -378,9 +379,7 @@ export abstract class BaseAdapter implements IResourceAdapter {
       return value === undefined || value === "";
     });
     if (missing.length > 0) {
-      throw new AdapterError(
-        `Operation ${operation} requires columns: ${missing.join(", ")}`,
-      );
+      throw new AdapterError(missingRequiredColumn(missing.join(", "), operation));
     }
   }
 

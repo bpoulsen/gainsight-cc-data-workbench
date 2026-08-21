@@ -31,6 +31,7 @@ import {
   UserIdentityResolver,
   identityResultsFields,
 } from "./identityResolver.js";
+import { isAbortError, JobAbortedError, jobAborted } from "./errors.js";
 import {
   createConcurrencyLimiter,
   DEFAULT_CONCURRENCY,
@@ -167,12 +168,12 @@ function needsIdentity(adapter: IResourceAdapter, spec: ResourceOperation): bool
   return spec.kind !== "create" || spec.name === "createReply";
 }
 
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === "AbortError";
-}
-
 function secretsOf(client: ApiClient): string[] {
   return [client.auth.config.clientId, client.auth.config.clientSecret].filter(Boolean);
+}
+
+function userAborted(options: { signal?: AbortSignal }): boolean {
+  return options.signal?.aborted === true;
 }
 
 export class BulkJobRunner {
@@ -262,26 +263,45 @@ export class BulkJobRunner {
       },
     };
 
-    if (spec.nativeBulk === true && groupNativeBulk && hasNativeBulkPlans(options.adapter)) {
-      await this.processNativeBulk(rows, ctx);
-    } else {
-      await Promise.all(
-        rows.map((row, index) =>
-          limit(async () => {
-            const record = await this.processRow({
-              row,
-              spec,
-              options,
-              identity,
-              dryRun,
-              now,
-              signal,
-              secrets: ctx.secrets,
-            });
-            this.settleRow(index, record, ctx);
-          }),
-        ),
-      );
+    try {
+      if (spec.nativeBulk === true && groupNativeBulk && hasNativeBulkPlans(options.adapter)) {
+        await this.processNativeBulk(rows, ctx);
+      } else {
+        await Promise.all(
+          rows.map((row, index) =>
+            limit(async () => {
+              const record = await this.processRow({
+                row,
+                spec,
+                options,
+                identity,
+                dryRun,
+                now,
+                signal,
+                secrets: ctx.secrets,
+              });
+              this.settleRow(index, record, ctx);
+            }),
+          ),
+        );
+      }
+    } catch (error) {
+      if (!isAbortError(error) || options.signal?.aborted !== true) {
+        throw error;
+      }
+    }
+
+    if (options.signal?.aborted) {
+      for (let index = 0; index < rows.length; index += 1) {
+        if (results[index] !== undefined) {
+          continue;
+        }
+        const row = rows[index];
+        if (row === undefined) {
+          continue;
+        }
+        this.settleRow(index, this.skippedRecord(this.rowBase(row, options, now().toISOString()), true), ctx);
+      }
     }
 
     mkdirSync(dirname(resultsPath), { recursive: true });
@@ -340,6 +360,11 @@ export class BulkJobRunner {
         ...(options.onAuditError !== undefined ? { onError: options.onAuditError } : {}),
       },
     );
+
+    if (options.signal?.aborted) {
+      throw new JobAbortedError(jobAborted(resultsPath), resultsPath);
+    }
+
     return summary;
   }
 
@@ -385,11 +410,11 @@ export class BulkJobRunner {
     };
   }
 
-  private skippedRecord(base: Record<string, unknown>): Record<string, unknown> {
+  private skippedRecord(base: Record<string, unknown>, aborted = false): Record<string, unknown> {
     return {
       ...base,
       status: "skipped",
-      error: "not run (fail-fast)",
+      error: aborted ? "not run (aborted)" : "not run (fail-fast)",
     };
   }
 
@@ -397,9 +422,10 @@ export class BulkJobRunner {
     base: Record<string, unknown>,
     error: unknown,
     secrets: string[],
+    aborted = false,
   ): Record<string, unknown> {
     if (isAbortError(error)) {
-      return this.skippedRecord(base);
+      return this.skippedRecord(base, aborted);
     }
     if (error instanceof IdentityError) {
       const fields = identityResultsFields(error);
@@ -439,7 +465,7 @@ export class BulkJobRunner {
     for (const [index, mapped] of rows.entries()) {
       const base = this.rowBase(mapped, ctx.options, timestamp);
       if (ctx.signal.aborted) {
-        this.settleRow(index, this.skippedRecord(base), ctx);
+        this.settleRow(index, this.skippedRecord(base, userAborted(ctx.options)), ctx);
         continue;
       }
       try {
@@ -454,7 +480,7 @@ export class BulkJobRunner {
         adapter.nativeBulkPlans([member], ctx.options.operation);
         ready.push(member);
       } catch (error) {
-        this.settleRow(index, this.recordFromError(base, error, ctx.secrets), ctx);
+        this.settleRow(index, this.recordFromError(base, error, ctx.secrets, userAborted(ctx.options)), ctx);
       }
     }
 
@@ -519,7 +545,7 @@ export class BulkJobRunner {
       stampMembers((member) => {
         const base = this.rowBase(member.mapped, ctx.options, ctx.now().toISOString());
         base.resolved_id = String(member.resolvedId);
-        return this.skippedRecord(base);
+        return this.skippedRecord(base, userAborted(ctx.options));
       });
       return;
     }
@@ -545,7 +571,7 @@ export class BulkJobRunner {
         stampMembers((member) => {
           const base = this.rowBase(member.mapped, ctx.options, ctx.now().toISOString());
           base.resolved_id = String(member.resolvedId);
-          return this.skippedRecord(base);
+          return this.skippedRecord(base, userAborted(ctx.options));
         });
         return;
       }
@@ -565,7 +591,7 @@ export class BulkJobRunner {
       stampMembers((member) => {
         const base = this.rowBase(member.mapped, ctx.options, ctx.now().toISOString());
         base.resolved_id = String(member.resolvedId);
-        return this.recordFromError(base, error, ctx.secrets);
+        return this.recordFromError(base, error, ctx.secrets, userAborted(ctx.options));
       });
     }
   }
@@ -593,11 +619,7 @@ export class BulkJobRunner {
     };
 
     if (input.signal.aborted) {
-      return {
-        ...base,
-        status: "skipped",
-        error: "not run (fail-fast)",
-      };
+      return this.skippedRecord(base, userAborted(input.options));
     }
 
     try {
@@ -632,7 +654,7 @@ export class BulkJobRunner {
         http_status: response.status,
       };
     } catch (error) {
-      return this.recordFromError(base, error, input.secrets);
+      return this.recordFromError(base, error, input.secrets, userAborted(input.options));
     }
   }
 }

@@ -51,6 +51,11 @@ describe("parseCliFlags", () => {
     expect(parseCliFlags(["--skip-confirmation"]).skipConfirmation).toBe(true);
   });
 
+  it("parses --verbose", () => {
+    expect(parseCliFlags([]).verbose).toBe(false);
+    expect(parseCliFlags(["--verbose"]).verbose).toBe(true);
+  });
+
   it("parses topic shard flags", () => {
     const flags = parseCliFlags([
       "--shard-by",

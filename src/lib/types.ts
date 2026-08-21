@@ -32,6 +32,7 @@ export interface CliFlags {
   concurrency: number;
   utf8Bom: boolean;
   skipConfirmation: boolean;
+  verbose: boolean;
   shardBy?: string;
   createdFrom?: string;
   createdTo?: string;

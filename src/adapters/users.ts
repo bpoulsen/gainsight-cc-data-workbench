@@ -2,6 +2,7 @@ import { DEFAULT_PAGE_SIZE } from "../lib/api/pagination.js";
 import type { QueryParams } from "../lib/auth.js";
 import type { RequestExtras } from "../lib/apiClient.js";
 import { flattenValue } from "../lib/csv.js";
+import { invalidField, missingRequiredColumn } from "../lib/errors.js";
 import {
   AdapterError,
   BaseAdapter,
@@ -79,7 +80,7 @@ export function asStringList(value: unknown): string[] {
 export function asIdList(value: unknown, field: string): number[] {
   return asStringList(value).map((item) => {
     if (!/^\d+$/.test(item)) {
-      throw new AdapterError(`${field} must be numeric (got "${item}")`);
+      throw new AdapterError(invalidField(field, "number", item));
     }
     return Number(item);
   });
@@ -447,7 +448,7 @@ export class UsersAdapter extends BaseAdapter {
     if (operation === "addRole") {
       const role = firstString(row, ["role", "roleName", "user_role"]);
       if (!role) {
-        throw new AdapterError("Operation addRole requires columns: role");
+        throw new AdapterError(missingRequiredColumn("role", "addRole"));
       }
       return this.callPlan({
         method: "POST",
@@ -460,7 +461,7 @@ export class UsersAdapter extends BaseAdapter {
     if (operation === "removeRole") {
       const role = firstString(row, ["role", "roleName"]);
       if (!role) {
-        throw new AdapterError("Operation removeRole requires columns: role");
+        throw new AdapterError(missingRequiredColumn("role", "removeRole"));
       }
       return this.callPlan({
         method: "DELETE",
@@ -472,7 +473,7 @@ export class UsersAdapter extends BaseAdapter {
     if (operation === "awardBadge" || operation === "revokeBadge") {
       const badgeId = firstString(row, ["badgeId", "badge"]);
       if (!badgeId) {
-        throw new AdapterError(`Operation ${operation} requires columns: badgeId`);
+        throw new AdapterError(missingRequiredColumn("badgeId", operation));
       }
       return this.callPlan({
         method: operation === "awardBadge" ? "PUT" : "DELETE",

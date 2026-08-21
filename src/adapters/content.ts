@@ -5,7 +5,7 @@
  * List/export always goes through GET /topics (10,000-result cap).
  * Writes use the named-action endpoints on /{segment}/… (family client prefixes /v2).
  */
-import { ValidationError } from "../lib/api/errors.js";
+import { invalidField, looksLikeTopicCap, missingRequiredColumn, TOPIC_CAP_MESSAGE } from "../lib/errors.js";
 import { DEFAULT_PAGE_SIZE } from "../lib/api/pagination.js";
 import type { QueryParams } from "../lib/auth.js";
 import type { RequestExtras } from "../lib/apiClient.js";
@@ -25,8 +25,7 @@ import {
 
 export const TOPIC_LIST_CAP = 10_000;
 export const COMMUNITY_MAX_PAGE_SIZE = 100;
-export const TOPIC_CAP_HINT =
-  "Topic list is capped at the first 10,000 matches. Narrow filters (category, content type, date, tags) or shard the export.";
+export const TOPIC_CAP_HINT = TOPIC_CAP_MESSAGE;
 
 export const CONTENT_RESOURCES = [
   "topics",
@@ -171,11 +170,7 @@ const CONVERT_OP_TO_TARGET: Record<string, string> = {
 
 /** True when a 422 from GET /topics is the 10,000-result cap (not a generic validation error). */
 export function isTopicCapError(error: unknown): boolean {
-  if (!(error instanceof ValidationError)) {
-    return false;
-  }
-  const text = `${error.message} ${error.errors.join(" ")}`.toLowerCase();
-  return text.includes("10,000") || text.includes("10000");
+  return looksLikeTopicCap(error);
 }
 
 export function isContentResourceName(value: string): value is ContentResourceName {
@@ -226,7 +221,7 @@ function asBoolean(value: unknown, field: string): boolean {
       return false;
     }
   }
-  throw new AdapterError(`${field} must be true or false`);
+  throw new AdapterError(invalidField(field, "boolean", value));
 }
 
 function optionalBoolean(value: unknown, field: string): boolean | undefined {
@@ -652,7 +647,7 @@ export class ContentAdapter extends BaseAdapter {
     if (resolved === "addModeratorTags" || resolved === "removeModeratorTags") {
       const tags = pipeList(row.tags ?? row.moderatorTags);
       if (tags.length === 0) {
-        throw new AdapterError(`Operation ${resolved} requires columns: tags`);
+        throw new AdapterError(missingRequiredColumn("tags", resolved));
       }
       const path =
         resolved === "addModeratorTags"
@@ -724,7 +719,7 @@ export class ContentAdapter extends BaseAdapter {
       this.requireFields(row, ["moderatorId"], resolved);
       const ideaStatusId = row.ideaStatusId ?? row.statusId;
       if (ideaStatusId === undefined || ideaStatusId === "") {
-        throw new AdapterError("Operation assignIdeaStatus requires columns: ideaStatusId");
+        throw new AdapterError(missingRequiredColumn("ideaStatusId", "assignIdeaStatus"));
       }
       return this.moderatorPost(`${base}/assignIdeaStatus`, resolved, row, id, {
         ideaStatusId: String(ideaStatusId),
@@ -734,7 +729,7 @@ export class ContentAdapter extends BaseAdapter {
       this.requireFields(row, ["moderatorId"], resolved);
       const productAreas = pipeList(row.productAreas ?? row.productAreaIds);
       if (productAreas.length === 0) {
-        throw new AdapterError("Operation assignProductAreas requires columns: productAreas");
+        throw new AdapterError(missingRequiredColumn("productAreas", "assignProductAreas"));
       }
       return this.moderatorPost(`${base}/editProductAreas`, resolved, row, id, { productAreas });
     }
@@ -757,7 +752,7 @@ export class ContentAdapter extends BaseAdapter {
     if (resolved === "convertType" || CONVERT_OP_TO_TARGET[resolved]) {
       const target = resolved === "convertType" ? String(row.targetType ?? "") : CONVERT_OP_TO_TARGET[resolved];
       if (!target) {
-        throw new AdapterError("Operation convertType requires columns: targetType");
+        throw new AdapterError(missingRequiredColumn("targetType", "convertType"));
       }
       const template = this.kind.conversions[target];
       if (!template) {

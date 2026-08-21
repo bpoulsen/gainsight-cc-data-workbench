@@ -148,7 +148,10 @@ Do not log or print client secrets or access tokens.
 | `--created-from` / `--created-to` | Date-shard window (`YYYY-MM-DD`) |
 | `--shard-separate` | One CSV per shard instead of merging |
 | `--auth-check` | Acquire a token and report expiry (token is not printed) |
+| `--verbose` | Print stack traces and redacted request/response bodies |
 | `-h`, `--help` / `-v`, `--version` | Help / version |
+
+Exit codes: **0** success, **1** error (including Ctrl+C abort), **2** partial success (some bulk rows or shards failed, others succeeded).
 
 Passing any of `--resource`, `--op`, `--csv`, or `--out` skips the wizard.
 
@@ -241,12 +244,14 @@ Official API docs: [https://api2-eu-west-1.insided.com/docs/community/](https://
 | HTTP 401 / missing scope | Confirm `.env.{profile}` credentials and that the token request includes `scope=read write`. Run `pnpm gs --auth-check`. |
 | HTTP 429 | Drop `--concurrency` (3 → 2 → 1). Failed delete rows are **not** auto-retried; follow the results CSV. |
 | Topic export stops at 10,000 / HTTP 422 | Wizard auto-shard, or `--shard-by=category\|date\|contentType`. See [filter sharding](docs/FILTER_SHARDING.md). |
+| Missing CSV column | `Missing required column: {column} for operation {operation}` — see [operations](docs/OPERATIONS.md). |
+| Ctrl+C mid-job | Partial results CSV is still written (`Job aborted. Partial results saved to …`). |
 | HTTP 422 on writes | Check required CSV columns in [operations](docs/OPERATIONS.md). Empty cells are omitted. |
 | `Operation cancelled by operator` | Typed confirm is case-sensitive (`users` or `DELETE`, not `Users`). |
 | Explore from flags | `--op explore` is interactive. Run `pnpm gs` or use `--op export`. |
 | Bulk not offered in the wizard | That resource is explore/export only (search, topics, categories). |
 
-Debug API calls with `GS_DEBUG=1` or `DEBUG=gainsight` (tokens and client secrets are redacted).
+Debug API calls with `--verbose`, `GS_DEBUG=1`, or `DEBUG=gainsight` (tokens and client secrets are redacted).
 
 ## Repository layout
 
@@ -259,6 +264,7 @@ src/lib/retry.ts             429/5xx backoff, delete-no-retry, concurrency limit
 src/lib/safety.ts            Typed confirmation for trash/erase/permanent delete
 src/lib/audit.ts             Append-only logs/jobs.jsonl
 src/lib/csv.ts               Streaming CSV reader/writer, column mapping, flatten
+src/lib/errors.ts            Operator-facing messages, exit codes, Ctrl+C
 src/lib/identityResolver.ts  User id/email resolution with per-job cache
 src/lib/filterSharding.ts    Topic 10k-cap shard plans (category / date / type)
 src/generated/               OpenAPI types (pnpm generate:api)

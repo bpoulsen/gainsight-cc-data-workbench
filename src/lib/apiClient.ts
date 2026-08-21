@@ -23,6 +23,7 @@ import type { GainsightConfig } from "./types.js";
 export {
   ApiError,
   AuthError,
+  AuthenticationError,
   NotFoundError,
   RateLimitError,
   ServerError,

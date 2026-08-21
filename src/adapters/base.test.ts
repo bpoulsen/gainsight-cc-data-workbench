@@ -172,6 +172,6 @@ describe("IResourceAdapter / BaseAdapter", () => {
 
   it("rejects unknown operations and missing columns", () => {
     expect(() => adapter.fromCsvRow({}, "editTags")).toThrow(/Unknown operation/);
-    expect(() => adapter.fromCsvRow({ id: 7 }, "updateField")).toThrow(/requires columns/);
+    expect(() => adapter.fromCsvRow({ id: 7 }, "updateField")).toThrow(/Missing required column/);
   });
 });

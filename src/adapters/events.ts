@@ -9,6 +9,7 @@ import { DEFAULT_PAGE_SIZE } from "../lib/api/pagination.js";
 import type { QueryParams } from "../lib/auth.js";
 import type { RequestExtras } from "../lib/apiClient.js";
 import { COMMUNITY_MAX_PAGE_SIZE, pipeList } from "./content.js";
+import { invalidField } from "../lib/errors.js";
 import {
   AdapterError,
   BaseAdapter,
@@ -44,7 +45,7 @@ function asBoolean(value: unknown, field: string): boolean {
       return false;
     }
   }
-  throw new AdapterError(`${field} must be true or false`);
+  throw new AdapterError(invalidField(field, "boolean", value));
 }
 
 function optionalString(row: Record<string, unknown>, ...keys: string[]): string | undefined {
@@ -75,7 +76,7 @@ function parseJson(value: unknown, field: string): unknown {
   try {
     return JSON.parse(String(value)) as unknown;
   } catch {
-    throw new AdapterError(`${field} must be valid JSON`);
+    throw new AdapterError(invalidField(field, "json", value));
   }
 }
 

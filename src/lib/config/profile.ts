@@ -64,7 +64,7 @@ export function resolveProfile(
   }
 
   throw new ProfileError(
-    "No profile configured. Copy .env.sandbox.example to .env.sandbox (and optionally .env.prod.example to .env.prod).",
+    "No profile configured. Create .env.sandbox with GAINSIGHT_BASE_URL, GAINSIGHT_CLIENT_ID, GAINSIGHT_CLIENT_SECRET.",
   );
 }
 
@@ -75,7 +75,7 @@ export function loadProfile(
   const envFile = envFilePath(profile, cwd);
   if (!existsSync(envFile)) {
     throw new ProfileError(
-      `Missing ${envFileName(profile)}. Copy ${envFileName(profile)}.example and fill in credentials.`,
+      `Profile ${profile} not configured. Create .env.${profile} with GAINSIGHT_BASE_URL, GAINSIGHT_CLIENT_ID, GAINSIGHT_CLIENT_SECRET.`,
     );
   }
 
@@ -83,7 +83,7 @@ export function loadProfile(
   const missing = REQUIRED_VARS.filter((key) => !parsed[key]?.trim());
   if (missing.length > 0) {
     throw new ProfileError(
-      `${envFileName(profile)} is missing required values: ${missing.join(", ")}.`,
+      `Profile ${profile} not configured. Create .env.${profile} with GAINSIGHT_BASE_URL, GAINSIGHT_CLIENT_ID, GAINSIGHT_CLIENT_SECRET. Missing: ${missing.join(", ")}.`,
     );
   }
 

@@ -1,6 +1,6 @@
-import { AuthError } from "../auth.js";
+import { AuthError, AuthenticationError } from "../auth.js";
 
-export { AuthError };
+export { AuthError, AuthenticationError };
 
 export class ApiError extends Error {
   readonly status: number;
@@ -131,7 +131,7 @@ export function mapHttpError(
   const message = messageFromBody(data, fallback);
 
   if (status === 401) {
-    return new AuthError(message);
+    return new AuthenticationError(message);
   }
   if (status === 404) {
     return new NotFoundError(message, method, path, data);

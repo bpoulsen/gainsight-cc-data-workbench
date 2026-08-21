@@ -137,7 +137,7 @@ describe("UserIdentityResolver", () => {
     expect(identityResultsFields(error as IdentityError)).toEqual({
       status: "failed",
       http_status: 404,
-      error: "User not found for email missing@example.com",
+      error: "User not found: missing@example.com. Verify email address.",
       resolved_id: "",
     });
     expect(resolver.stats.failures).toBe(1);
