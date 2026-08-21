@@ -503,4 +503,39 @@ describe("BulkJobRunner", () => {
       );
     });
   });
+
+  it("caps concurrent row execution", async () => {
+    await withTemp(async (dir) => {
+      const csvPath = join(dir, "users.csv");
+      await writeFile(
+        csvPath,
+        "id,field,value\n7,username,a\n8,username,b\n9,username,c\n10,username,d\n",
+      );
+      let inflight = 0;
+      let maxInflight = 0;
+      const client = mockClient(async (url) => {
+        if (!url.pathname.includes("/username/")) {
+          return jsonResponse({ ok: true });
+        }
+        inflight += 1;
+        maxInflight = Math.max(maxInflight, inflight);
+        await new Promise((resolve) => {
+          setTimeout(resolve, 40);
+        });
+        inflight -= 1;
+        return jsonResponse({ ok: true }, 200);
+      });
+      const summary = await new BulkJobRunner().run({
+        csvPath,
+        operation: "updateField",
+        adapter: new UsersAdapter(client),
+        client,
+        profile: "sandbox",
+        cwd: dir,
+        concurrency: 2,
+      });
+      expect(summary.success).toBe(4);
+      expect(maxInflight).toBeLessThanOrEqual(2);
+    });
+  });
 });

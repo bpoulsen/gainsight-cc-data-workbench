@@ -101,6 +101,35 @@ describe("RetryPolicy", () => {
     const limited = new RateLimitError("slow", "POST", "/user/7/erase", {});
     expect(policy.canRetry({ method: "POST", path: "/user/7/erase" }, limited, 1)).toBe(false);
   });
+
+  it("retries 5xx up to three attempts and does not retry deletes", async () => {
+    let serverCalls = 0;
+    const server = new RetryPolicy({
+      sleep: async () => {},
+      random: () => 0.5,
+      log: () => {},
+    });
+    await expect(
+      server.execute(async () => {
+        serverCalls += 1;
+        throw new ServerError("busy", 503, "GET", "/user", {});
+      }, { method: "GET", path: "/user" }),
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ServerError);
+      expect((error as ServerError).attempts).toBe(3);
+      return true;
+    });
+    expect(serverCalls).toBe(3);
+
+    let deleteCalls = 0;
+    await expect(
+      server.execute(async () => {
+        deleteCalls += 1;
+        throw new ServerError("busy", 500, "DELETE", "/user/7/erase", {});
+      }, { method: "DELETE", path: "/user/7/erase", operation: "erase" }),
+    ).rejects.toBeInstanceOf(ServerError);
+    expect(deleteCalls).toBe(1);
+  });
 });
 
 describe("parseRetryAfter", () => {

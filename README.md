@@ -265,6 +265,7 @@ src/generated/               OpenAPI types (pnpm generate:api)
 src/adapters/                Resource adapters
 src/commands/                export, bulk, and interactive wizard
 src/wizard/                  Wizard helpers and @clack/prompts UI
+tests/                       Contract tests, fixtures, sandbox integration (see tests/README.md)
 docs/prd/prd.md              Product requirements
 docs/api/                    OpenAPI specs + Postman collection
 docs/CSV_IDENTITY.md         Identity resolution
@@ -278,9 +279,12 @@ docs/FILTER_SHARDING.md      Topic 10k cap workarounds
 pnpm install
 pnpm gs --help
 pnpm test
+pnpm test:coverage
 pnpm typecheck
 pnpm generate:api   # regenerate src/generated from docs/api/*.json
 ```
+
+Unit tests are colocated under `src/**/*.test.ts`. OpenAPI contract tests and sandbox integration live in [`tests/`](tests/README.md).
 
 Copy `.env.sandbox.example` to `.env.sandbox` and fill in OAuth client credentials from Gainsight CC admin. Optionally copy `.env.prod.example` to `.env.prod`.
 

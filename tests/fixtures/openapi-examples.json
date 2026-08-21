@@ -1,0 +1,31 @@
+{
+  "comment": "Redacted request/response shapes copied from docs/api/*.json examples. Passwords and tokens are placeholders.",
+  "userRegisterRequest": {
+    "email": "user@example.com",
+    "username": "user",
+    "password": "[redacted]",
+    "user_role": ["roles.registered"]
+  },
+  "bulkUserAddRole": {
+    "data": {
+      "userIds": [2, 3],
+      "roleIds": [7, 13]
+    }
+  },
+  "bulkUserAddBadge": {
+    "data": {
+      "userIds": [2, 3],
+      "badgeIds": [7, 13]
+    }
+  },
+  "assignPoints": {
+    "user": 5,
+    "points": 100
+  },
+  "leaderboardUser": {
+    "userId": 7,
+    "points": 1200,
+    "name": "ops",
+    "leaderboardPosition": 1
+  }
+}

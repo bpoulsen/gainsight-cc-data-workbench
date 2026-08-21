@@ -142,6 +142,17 @@ describe("UsersAdapter fromCsvRow", () => {
       path: "/user/bulk/role",
       body: { data: { userIds: [3], roleIds: [7, 13] } },
     });
+    expect(adapter.fromCsvRow({ roleIds: "7|13" }, "bulkRemoveRoles", { resolvedId: 3 })).toMatchObject({
+      method: "DELETE",
+      path: "/user/bulk/role",
+      body: { data: { userIds: [3], roleIds: [7, 13] } },
+      retryable: false,
+    });
+    expect(adapter.fromCsvRow({ badgeIds: "11" }, "bulkAwardBadges", { resolvedId: 3 })).toMatchObject({
+      method: "POST",
+      path: "/user/bulk/badge",
+      body: { data: { userIds: [3], badgeIds: [11] } },
+    });
 
     const erase = adapter.fromCsvRow({ id: 7 }, "erase");
     expect(erase.method).toBe("DELETE");
