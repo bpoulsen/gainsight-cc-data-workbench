@@ -95,7 +95,8 @@ export function createClackUi(): WizardUi {
       if (opts.validate !== undefined) {
         textOpts.validate = opts.validate;
       }
-      return unwrap(await p.text(textOpts));
+      // Empty Enter (placeholder-only prompts) is `undefined` from Clack, not "".
+      return unwrap(await p.text(textOpts)) ?? "";
     },
     async confirm(opts: WizardConfirmOptions): Promise<boolean> {
       const confirmOpts: Parameters<typeof p.confirm>[0] = { message: opts.message };

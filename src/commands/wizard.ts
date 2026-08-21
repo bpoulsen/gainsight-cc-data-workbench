@@ -200,7 +200,7 @@ async function collectFilters(adapter: IResourceAdapter, ui: WizardUi): Promise<
       if (!prompt.required) {
         textOpts.placeholder = "Leave empty to skip";
       }
-      raw = await ui.text(textOpts);
+      raw = (await ui.text(textOpts)) ?? "";
     }
     applyParsedFilter(filters, prompt.name, parseFilterInput(raw, prompt));
   }

@@ -118,10 +118,10 @@ export function missingRequiredColumns(
 }
 
 export function parseFilterInput(
-  raw: string,
+  raw: string | undefined | null,
   prompt: Pick<FilterPrompt, "name" | "type">,
 ): QueryPrimitive | QueryPrimitive[] | undefined {
-  const trimmed = raw.trim();
+  const trimmed = (raw ?? "").trim();
   if (trimmed.length === 0) {
     return undefined;
   }

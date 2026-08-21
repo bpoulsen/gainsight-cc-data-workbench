@@ -38,6 +38,8 @@ describe("shouldLaunchWizard", () => {
 describe("parseFilterInput", () => {
   it("skips blank input", () => {
     expect(parseFilterInput("  ", { name: "q", type: "string" })).toBeUndefined();
+    expect(parseFilterInput(undefined, { name: "q", type: "string" })).toBeUndefined();
+    expect(parseFilterInput(null, { name: "roles", type: "string[]" })).toBeUndefined();
   });
 
   it("parses strings, booleans, and numbers", () => {
